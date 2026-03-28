@@ -1,37 +1,71 @@
-import { useMemo, useState } from "react";
-import { exerciseList } from "../data/exercises";
+import { useEffect, useMemo, useState } from "react";
+import {
+  exercises,
+  muscleGroups,
+  equipmentTypes,
+} from "../data/exercises";
+
+const createDefaultSets = () => [
+  { id: 1, reps: "" },
+  { id: 2, reps: "" },
+  { id: 3, reps: "" },
+];
 
 const Workouts = () => {
-  const [selectedExerciseName, setSelectedExerciseName] = useState("Pushups");
-  const [selectedVariation, setSelectedVariation] = useState("Standard");
-  const [sets, setSets] = useState([
-    { id: 1, reps: "" },
-    { id: 2, reps: "" },
-    { id: 3, reps: "" },
-  ]);
+  const [selectedMuscle, setSelectedMuscle] = useState("Chest");
+  const [selectedEquipment, setSelectedEquipment] = useState("Without Weight");
+  const [selectedWorkoutName, setSelectedWorkoutName] = useState("");
+  const [selectedVariation, setSelectedVariation] = useState("");
+  const [sets, setSets] = useState(createDefaultSets());
   const [savedWorkouts, setSavedWorkouts] = useState([]);
 
-  const selectedExercise = useMemo(() => {
-    return (
-      exerciseList.find((exercise) => exercise.name === selectedExerciseName) ||
-      exerciseList[0]
+  const filteredExercises = useMemo(() => {
+    return exercises.filter(
+      (exercise) =>
+        exercise.muscleGroup === selectedMuscle &&
+        exercise.equipmentType === selectedEquipment
     );
-  }, [selectedExerciseName]);
+  }, [selectedMuscle, selectedEquipment]);
 
-  const totalSets = sets.length;
-  const filledSetCount = sets.filter((set) => set.reps !== "").length;
+  useEffect(() => {
+    if (filteredExercises.length === 0) {
+      setSelectedWorkoutName("");
+      setSelectedVariation("");
+      setSets(createDefaultSets());
+      return;
+    }
 
-  const handleExerciseChange = (event) => {
-    const exerciseName = event.target.value;
-    const exercise = exerciseList.find((item) => item.name === exerciseName);
+    const firstWorkout = filteredExercises[0];
+    setSelectedWorkoutName(firstWorkout.name);
+    setSelectedVariation(firstWorkout.variations?.[0] || "");
+    setSets(createDefaultSets());
+  }, [filteredExercises]);
 
-    setSelectedExerciseName(exerciseName);
-    setSelectedVariation(exercise?.variations?.[0] || "");
-    setSets([
-      { id: 1, reps: "" },
-      { id: 2, reps: "" },
-      { id: 3, reps: "" },
-    ]);
+  const selectedWorkout = useMemo(() => {
+    if (!filteredExercises.length) return null;
+
+    return (
+      filteredExercises.find(
+        (exercise) => exercise.name === selectedWorkoutName
+      ) || filteredExercises[0]
+    );
+  }, [filteredExercises, selectedWorkoutName]);
+
+  const handleMuscleChange = (event) => {
+    setSelectedMuscle(event.target.value);
+  };
+
+  const handleEquipmentChange = (event) => {
+    setSelectedEquipment(event.target.value);
+  };
+
+  const handleWorkoutChange = (event) => {
+    const workoutName = event.target.value;
+    const workout = filteredExercises.find((item) => item.name === workoutName);
+
+    setSelectedWorkoutName(workoutName);
+    setSelectedVariation(workout?.variations?.[0] || "");
+    setSets(createDefaultSets());
   };
 
   const handleVariationChange = (event) => {
@@ -65,6 +99,11 @@ const Workouts = () => {
   };
 
   const handleSaveWorkout = () => {
+    if (!selectedWorkout) {
+      alert("No workout available for this filter.");
+      return;
+    }
+
     const validSets = sets.filter((set) => set.reps !== "");
 
     if (validSets.length === 0) {
@@ -74,101 +113,162 @@ const Workouts = () => {
 
     const workoutEntry = {
       id: Date.now(),
-      exercise: selectedExercise.name,
+      muscleGroup: selectedWorkout.muscleGroup,
+      equipmentType: selectedWorkout.equipmentType,
+      workout: selectedWorkout.name,
+      difficulty: selectedWorkout.difficulty,
+      secondaryMuscles: selectedWorkout.secondaryMuscles || [],
       variation: selectedVariation,
-      type: selectedExercise.type,
-      muscles: selectedExercise.muscles,
       sets: validSets,
     };
 
     setSavedWorkouts((prev) => [workoutEntry, ...prev]);
-
-    setSets([
-      { id: 1, reps: "" },
-      { id: 2, reps: "" },
-      { id: 3, reps: "" },
-    ]);
+    setSets(createDefaultSets());
   };
+
+  const totalSets = sets.length;
+  const filledSets = sets.filter((set) => set.reps !== "").length;
 
   return (
     <section className="page-section">
       <div className="hero-card">
         <span className="hero-tag">Workout Engine</span>
-        <h2>Log Your Training</h2>
+        <h2>Build Your Workout</h2>
         <p>
-          Select a workout, review the muscle groups automatically, add sets one
-          by one, and save your session.
+          Choose a muscle group, choose whether it is with or without weight,
+          select the workout, add sets and reps, then save it.
         </p>
       </div>
 
       <div className="workout-summary-grid">
         <div className="info-card">
-          <h3>Selected Workout</h3>
-          <p>{selectedExercise.name}</p>
+          <h3>Muscle Group</h3>
+          <p>{selectedMuscle}</p>
         </div>
 
         <div className="info-card">
-          <h3>Workout Type</h3>
-          <p>{selectedExercise.type}</p>
+          <h3>Equipment</h3>
+          <p>{selectedEquipment}</p>
         </div>
 
         <div className="info-card">
-          <h3>Total Sets</h3>
-          <p>{totalSets}</p>
+          <h3>Workout</h3>
+          <p>{selectedWorkout ? selectedWorkout.name : "No workout found"}</p>
         </div>
 
         <div className="info-card">
           <h3>Filled Sets</h3>
-          <p>{filledSetCount}</p>
+          <p>
+            {filledSets} / {totalSets}
+          </p>
         </div>
       </div>
 
       <div className="workout-form-card">
         <div className="form-group">
-          <label htmlFor="exercise">Workout</label>
+          <label htmlFor="muscle-group">Muscle Group</label>
           <select
-            id="exercise"
-            value={selectedExerciseName}
-            onChange={handleExerciseChange}
+            id="muscle-group"
+            value={selectedMuscle}
+            onChange={handleMuscleChange}
           >
-            {exerciseList.map((exercise) => (
-              <option key={exercise.name} value={exercise.name}>
-                {exercise.name}
+            {muscleGroups.map((muscle) => (
+              <option key={muscle} value={muscle}>
+                {muscle}
               </option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="variation">Variation</label>
+          <label htmlFor="equipment-type">Equipment Type</label>
           <select
-            id="variation"
-            value={selectedVariation}
-            onChange={handleVariationChange}
+            id="equipment-type"
+            value={selectedEquipment}
+            onChange={handleEquipmentChange}
           >
-            {selectedExercise.variations.map((variation) => (
-              <option key={variation} value={variation}>
-                {variation}
+            {equipmentTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="muscle-preview-card">
-          <h3>Muscle Groups</h3>
-          <div className="muscle-chip-wrap">
-            {selectedExercise.muscles.map((muscle) => (
-              <span key={muscle} className="muscle-chip">
-                {muscle}
+        <div className="form-group">
+          <label htmlFor="workout-select">Workout</label>
+          <select
+            id="workout-select"
+            value={selectedWorkoutName}
+            onChange={handleWorkoutChange}
+            disabled={!filteredExercises.length}
+          >
+            {filteredExercises.length ? (
+              filteredExercises.map((exercise) => (
+                <option key={exercise.name} value={exercise.name}>
+                  {exercise.name}
+                </option>
+              ))
+            ) : (
+              <option value="">No workouts available</option>
+            )}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="variation-select">Variation</label>
+          <select
+            id="variation-select"
+            value={selectedVariation}
+            onChange={handleVariationChange}
+            disabled={!selectedWorkout}
+          >
+            {selectedWorkout?.variations?.length ? (
+              selectedWorkout.variations.map((variation) => (
+                <option key={variation} value={variation}>
+                  {variation}
+                </option>
+              ))
+            ) : (
+              <option value="">No variation</option>
+            )}
+          </select>
+        </div>
+
+        <div className="workout-details-grid">
+          <div className="muscle-preview-card">
+            <h3>Difficulty</h3>
+            <div className="muscle-chip-wrap">
+              <span className="muscle-chip strong">
+                {selectedWorkout?.difficulty || "Not available"}
               </span>
-            ))}
+            </div>
+          </div>
+
+          <div className="muscle-preview-card">
+            <h3>Secondary Muscles</h3>
+            <div className="muscle-chip-wrap">
+              {selectedWorkout?.secondaryMuscles?.length ? (
+                selectedWorkout.secondaryMuscles.map((muscle) => (
+                  <span key={muscle} className="muscle-chip">
+                    {muscle}
+                  </span>
+                ))
+              ) : (
+                <span className="empty-text">No secondary muscles</span>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="sets-card">
           <div className="sets-header">
             <h3>Sets & Reps</h3>
-            <button type="button" className="secondary-btn" onClick={handleAddSet}>
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={handleAddSet}
+            >
               + Add Set
             </button>
           </div>
@@ -181,7 +281,7 @@ const Workouts = () => {
                 <input
                   type="number"
                   min="1"
-                  placeholder="Reps"
+                  placeholder="Enter reps"
                   value={set.reps}
                   onChange={(event) =>
                     handleSetRepsChange(set.id, event.target.value)
@@ -206,31 +306,38 @@ const Workouts = () => {
       </div>
 
       <div className="info-card">
-        <h3>Today’s Logged Workouts</h3>
+        <h3>Saved Workouts</h3>
 
         {savedWorkouts.length === 0 ? (
           <p>No workouts saved yet.</p>
         ) : (
           <div className="saved-workouts-list">
-            {savedWorkouts.map((workout) => (
-              <div key={workout.id} className="saved-workout-item">
+            {savedWorkouts.map((item) => (
+              <div key={item.id} className="saved-workout-item">
                 <div className="saved-workout-top">
                   <h4>
-                    {workout.exercise} <span>• {workout.variation}</span>
+                    {item.muscleGroup} • {item.workout}
                   </h4>
-                  <p>{workout.type}</p>
+                  <p>{item.variation}</p>
                 </div>
 
-                <div className="muscle-chip-wrap">
-                  {workout.muscles.map((muscle) => (
-                    <span key={muscle} className="muscle-chip">
+                <div className="saved-set-wrap">
+                  <span className="saved-set-pill">
+                    {item.equipmentType}
+                  </span>
+                  <span className="saved-set-pill">
+                    {item.difficulty}
+                  </span>
+
+                  {item.secondaryMuscles.map((muscle) => (
+                    <span key={muscle} className="saved-set-pill subtle">
                       {muscle}
                     </span>
                   ))}
                 </div>
 
                 <div className="saved-set-wrap">
-                  {workout.sets.map((set) => (
+                  {item.sets.map((set) => (
                     <span key={set.id} className="saved-set-pill">
                       Set {set.id}: {set.reps} reps
                     </span>
