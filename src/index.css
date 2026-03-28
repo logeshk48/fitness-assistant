@@ -73,3 +73,221 @@ body {
     color: #6366f1;
   }
 }
+.hero-card,
+.info-card,
+.workout-form-card,
+.muscle-preview-card,
+.sets-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hero-tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #312e81;
+  color: #c7d2fe;
+  margin-bottom: 10px;
+}
+
+.workout-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.workout-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.form-group select,
+.set-row input {
+  width: 100%;
+  background: #0f172a;
+  color: white;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  outline: none;
+}
+
+.muscle-chip-wrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.muscle-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.sets-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sets-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.sets-header h3,
+.muscle-preview-card h3,
+.info-card h3,
+.hero-card h2 {
+  margin: 0;
+}
+
+.sets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 90px;
+  gap: 10px;
+  align-items: center;
+}
+
+.set-label {
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.primary-btn,
+.secondary-btn,
+.remove-set-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.primary-btn {
+  background: #6366f1;
+  color: white;
+}
+
+.secondary-btn {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.remove-set-btn {
+  background: #3f1d1d;
+  color: #fecaca;
+  padding: 10px 12px;
+}
+
+.saved-workouts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.saved-workout-item {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.saved-workout-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.saved-workout-top h4 {
+  margin: 0;
+}
+
+.saved-workout-top h4 span {
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.saved-workout-top p {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.saved-set-wrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.saved-set-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #172554;
+  color: #bfdbfe;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .workout-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .set-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sets-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 640px) {
+  .workout-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .saved-workout-top {
+    flex-direction: column;
+  }
+}
