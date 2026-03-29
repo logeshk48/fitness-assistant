@@ -250,7 +250,7 @@ a {
 
 .set-row {
   display: grid;
-  grid-template-columns: 70px 1fr 90px;
+  grid-template-columns: 70px 1fr 1fr 90px;
   gap: 10px;
   align-items: center;
 }
@@ -656,4 +656,21 @@ a {
   .workout-card-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+.workout-select-card.active {
+  border: 1px solid #6366f1;
+  box-shadow: 0 0 0 1px #6366f1, 0 10px 30px rgba(99,102,241,0.3);
+}
+.workout-select-card.active {
+  border: 1px solid #6366f1;
+  box-shadow: 0 0 0 1px #6366f1, 0 10px 30px rgba(99,102,241,0.3);
+}
+.primary-btn {
+  background: linear-gradient(135deg, #6366f1, #22d3ee);
+  transition: 0.2s;
+}
+
+.primary-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 30px rgba(99,102,241,0.4);
 }

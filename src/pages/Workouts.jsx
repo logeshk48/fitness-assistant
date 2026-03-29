@@ -6,9 +6,9 @@ import {
 } from "../data/exercises";
 
 const createDefaultSets = () => [
-  { id: 1, reps: "" },
-  { id: 2, reps: "" },
-  { id: 3, reps: "" },
+  { id: 1, reps: "", weight: "" },
+  { id: 2, reps: "", weight: "" },
+  { id: 3, reps: "", weight: "" },
 ];
 
 const Workouts = () => {
@@ -66,6 +66,11 @@ const Workouts = () => {
       prevSets.map((set) => (set.id === id ? { ...set, reps: value } : set))
     );
   };
+  const handleSetWeightChange = (id, value) => {
+  setSets((prevSets) =>
+    prevSets.map((set) => (set.id === id ? { ...set, weight: value } : set))
+  );
+};
 
   const handleAddSet = () => {
     setSets((prevSets) => [
@@ -149,6 +154,10 @@ const Workouts = () => {
           <strong>
             {filledSets}/{totalSets}
           </strong>
+        </div>
+        <div className="premium-stat-card">
+          <span>Today</span>
+          <strong>{savedWorkouts.length}</strong>
         </div>
       </div>
 
@@ -329,6 +338,17 @@ const Workouts = () => {
                   handleSetRepsChange(set.id, event.target.value)
                 }
               />
+              {selectedEquipment === "With Weight" && (
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Weight (kg)"
+                  value={set.weight}
+                  onChange={(event) =>
+                    handleSetWeightChange(set.id, event.target.value)
+                  }
+                  />
+                  )}
 
               <button
                 type="button"
@@ -357,7 +377,10 @@ const Workouts = () => {
         </div>
 
         {savedWorkouts.length === 0 ? (
-          <div className="empty-state-card">No workouts saved yet.</div>
+          <div className="empty-state-card">
+            <div style={{ fontSize: "28px" }}>🏋️</div>
+            <p>No workouts saved yet</p>
+          </div>
         ) : (
           <div className="saved-workouts-list">
             {savedWorkouts.map((item) => (
@@ -387,8 +410,11 @@ const Workouts = () => {
                   {item.sets.map((set) => (
                     <span key={set.id} className="saved-set-pill">
                       Set {set.id}: {set.reps} reps
-                    </span>
-                  ))}
+                      {item.equipmentType === "With Weight" && set.weight
+                        ? ` • ${set.weight} kg`
+                        : ""}
+                      </span>
+                    ))}
                 </div>
               </div>
             ))}
