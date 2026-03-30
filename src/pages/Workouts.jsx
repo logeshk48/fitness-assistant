@@ -1,9 +1,19 @@
+
 import { useEffect, useMemo, useState } from "react";
 import {
   exercises,
   muscleGroups,
   equipmentTypes,
 } from "../data/exercises";
+import { db } from "../firebase";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
 
 const createDefaultSets = () => [
   { id: 1, reps: "", weight: "" },
@@ -40,7 +50,26 @@ const Workouts = () => {
     setSelectedVariation(firstWorkout.variations?.[0] || "");
     setSets(createDefaultSets());
   }, [filteredExercises]);
+  
+  const fetchSavedWorkouts = async () => {
+  try {
+    const workoutsRef = collection(db, "workouts");
+    const q = query(workoutsRef, orderBy("createdAt", "desc"));
+    const querySnapshot = await getDocs(q);
 
+    const workouts = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setSavedWorkouts(workouts);
+  } catch (error) {
+    console.error("Error fetching workouts:", error);
+  }
+  };
+  useEffect(() => {
+    fetchSavedWorkouts();
+  }, []);
   const selectedWorkout = useMemo(() => {
     if (!filteredExercises.length) return null;
 
@@ -75,7 +104,7 @@ const Workouts = () => {
   const handleAddSet = () => {
     setSets((prevSets) => [
       ...prevSets,
-      { id: prevSets.length + 1, reps: "" },
+      { id: prevSets.length + 1, reps: "", weight: "" },
     ]);
   };
 
@@ -92,7 +121,7 @@ const Workouts = () => {
     setSets(updatedSets);
   };
 
-  const handleSaveWorkout = () => {
+  const handleSaveWorkout = async () => {
     if (!selectedWorkout) {
       alert("No workout available for this filter.");
       return;
@@ -105,8 +134,9 @@ const Workouts = () => {
       return;
     }
 
+    const now = new Date();
+
     const workoutEntry = {
-      id: Date.now(),
       muscleGroup: selectedWorkout.muscleGroup,
       equipmentType: selectedWorkout.equipmentType,
       workout: selectedWorkout.name,
@@ -114,11 +144,25 @@ const Workouts = () => {
       secondaryMuscles: selectedWorkout.secondaryMuscles || [],
       variation: selectedVariation,
       sets: validSets,
+      totalSets: validSets.length,
+      totalReps: validSets.reduce(
+        (sum, set) => sum + Number(set.reps || 0),
+        0
+      ),
+      dateKey: now.toISOString().split("T")[0],
+      dayName: now.toLocaleDateString("en-US", { weekday: "short" }),
+      createdAt: serverTimestamp(),
     };
 
-    setSavedWorkouts((prev) => [workoutEntry, ...prev]);
-    setSets(createDefaultSets());
-  };
+    try {
+      await addDoc(collection(db, "workouts"), workoutEntry);
+      await fetchSavedWorkouts();
+      setSets(createDefaultSets());
+  }   catch (error) {
+      console.error("Error saving workout:", error);
+      alert("Failed to save workout.");
+  }
+};
 
   const totalSets = sets.length;
   const filledSets = sets.filter((set) => set.reps !== "").length;
