@@ -3,15 +3,15 @@ import { db } from "../firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import "./Stats.css";
 
-const AnimatedNumber = ({ value, duration = 900 }) => {
+const AnimatedNumber = ({ value, duration = 900, suffix = "" }) => {
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     let start = 0;
-    const increment = value / (duration / 16);
+    const step = value / Math.max(duration / 16, 1);
 
     const timer = setInterval(() => {
-      start += increment;
+      start += step;
 
       if (start >= value) {
         setDisplayValue(value);
@@ -24,7 +24,12 @@ const AnimatedNumber = ({ value, duration = 900 }) => {
     return () => clearInterval(timer);
   }, [value, duration]);
 
-  return <strong>{displayValue}</strong>;
+  return (
+    <strong>
+      {displayValue}
+      {suffix}
+    </strong>
+  );
 };
 
 const Stats = () => {
@@ -35,15 +40,8 @@ const Stats = () => {
   const [totalReps, setTotalReps] = useState(0);
   const [topMuscle, setTopMuscle] = useState("None");
 
-  const [muscleStats, setMuscleStats] = useState([]);
-  const [equipmentStats, setEquipmentStats] = useState([]);
-  const [difficultyStats, setDifficultyStats] = useState([]);
-
   const [weeklyStats, setWeeklyStats] = useState([]);
-  const [weeklyWorkoutTotal, setWeeklyWorkoutTotal] = useState(0);
-  const [activeDays, setActiveDays] = useState(0);
-
-  const [recentWorkouts, setRecentWorkouts] = useState([]);
+  const [muscleStats, setMuscleStats] = useState([]);
 
   const fetchWorkouts = async () => {
     try {
@@ -56,23 +54,12 @@ const Stats = () => {
         ...doc.data(),
       }));
 
-      setRecentWorkouts(data.slice(0, 5));
       calculateStats(data);
     } catch (error) {
-      console.error("Error fetching workouts:", error);
+      console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const buildPercentageArray = (countMap, total) => {
-    return Object.entries(countMap)
-      .map(([label, count]) => ({
-        label,
-        count,
-        percent: total > 0 ? Math.round((count / total) * 100) : 0,
-      }))
-      .sort((a, b) => b.count - a.count);
   };
 
   const buildWeeklyData = (data) => {
@@ -83,14 +70,9 @@ const Stats = () => {
       const current = new Date();
       current.setDate(today.getDate() - i);
 
-      const dateKey = current.toISOString().split("T")[0];
-      const dayLabel = current.toLocaleDateString("en-US", {
-        weekday: "short",
-      });
-
       weekDays.push({
-        dateKey,
-        dayLabel,
+        dateKey: current.toISOString().split("T")[0],
+        dayLabel: current.toLocaleDateString("en-US", { weekday: "short" }),
         count: 0,
       });
     }
@@ -102,12 +84,32 @@ const Stats = () => {
       }
     });
 
-    const total = weekDays.reduce((sum, day) => sum + day.count, 0);
-    const active = weekDays.filter((day) => day.count > 0).length;
-
     setWeeklyStats(weekDays);
-    setWeeklyWorkoutTotal(total);
-    setActiveDays(active);
+  };
+
+  const buildMuscleDistribution = (data) => {
+    const muscleCount = {};
+
+    data.forEach((item) => {
+      if (!item.muscleGroup) return;
+      muscleCount[item.muscleGroup] = (muscleCount[item.muscleGroup] || 0) + 1;
+    });
+
+    const sorted = Object.entries(muscleCount)
+      .map(([label, count]) => ({
+        label,
+        count,
+        percent: data.length > 0 ? Math.round((count / data.length) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    setMuscleStats(sorted);
+
+    if (sorted.length > 0) {
+      setTopMuscle(sorted[0].label);
+    } else {
+      setTopMuscle("None");
+    }
   };
 
   const calculateStats = (data) => {
@@ -119,43 +121,8 @@ const Stats = () => {
     const reps = data.reduce((sum, item) => sum + (item.totalReps || 0), 0);
     setTotalReps(reps);
 
-    const muscleCount = {};
-    const equipmentCount = {};
-    const difficultyCount = {};
-
-    data.forEach((item) => {
-      if (item.muscleGroup) {
-        muscleCount[item.muscleGroup] = (muscleCount[item.muscleGroup] || 0) + 1;
-      }
-
-      if (item.equipmentType) {
-        equipmentCount[item.equipmentType] =
-          (equipmentCount[item.equipmentType] || 0) + 1;
-      }
-
-      if (item.difficulty) {
-        difficultyCount[item.difficulty] =
-          (difficultyCount[item.difficulty] || 0) + 1;
-      }
-    });
-
-    let top = "None";
-    let max = 0;
-
-    for (const muscle in muscleCount) {
-      if (muscleCount[muscle] > max) {
-        max = muscleCount[muscle];
-        top = muscle;
-      }
-    }
-
-    setTopMuscle(top);
-
-    setMuscleStats(buildPercentageArray(muscleCount, data.length));
-    setEquipmentStats(buildPercentageArray(equipmentCount, data.length));
-    setDifficultyStats(buildPercentageArray(difficultyCount, data.length));
-
     buildWeeklyData(data);
+    buildMuscleDistribution(data);
   };
 
   useEffect(() => {
@@ -171,7 +138,7 @@ const Stats = () => {
           <div>
             <span className="hero-tag">Stats Engine</span>
             <h2>Your Workout Analytics</h2>
-            <p>Loading your workout insights...</p>
+            <p>Loading your stats...</p>
           </div>
         </div>
 
@@ -188,14 +155,11 @@ const Stats = () => {
         <div>
           <span className="hero-tag">Stats Engine</span>
           <h2>Your Workout Analytics</h2>
-          <p>
-            Track your workouts, sets, reps, and muscle focus using real-time
-            data.
-          </p>
+          <p>Clean insights from your saved workouts.</p>
         </div>
       </div>
 
-      <div className="premium-stats-grid">
+      <div className="premium-stats-grid stats-clean-grid">
         <div className="premium-stat-card">
           <span>Total Workouts</span>
           <AnimatedNumber value={totalWorkouts} />
@@ -215,25 +179,15 @@ const Stats = () => {
           <span>Top Muscle</span>
           <strong>{topMuscle}</strong>
         </div>
-
-        <div className="premium-stat-card">
-          <span>This Week</span>
-          <AnimatedNumber value={weeklyWorkoutTotal} />
-        </div>
-
-        <div className="premium-stat-card">
-          <span>Active Days</span>
-          <strong>{activeDays}/7</strong>
-        </div>
       </div>
 
       <div className="premium-panel">
         <div className="panel-header">
           <h3>Weekly Activity</h3>
-          <p>See how active you were over the last 7 days.</p>
+          <p>Last 7 days</p>
         </div>
 
-        <div className="weekly-activity-grid">
+        <div className="weekly-activity-grid clean-weekly-grid">
           {weeklyStats.map((day) => {
             const heightPercent =
               maxWeeklyCount > 0
@@ -241,7 +195,7 @@ const Stats = () => {
                 : 6;
 
             return (
-              <div key={day.dateKey} className="weekly-day-card">
+              <div key={day.dateKey} className="weekly-day-card clean-weekly-card">
                 <div className="weekly-bar-wrap">
                   <div
                     className={`weekly-bar-fill ${day.count > 0 ? "active" : ""}`}
@@ -259,12 +213,12 @@ const Stats = () => {
       <div className="premium-panel">
         <div className="panel-header">
           <h3>Muscle Distribution</h3>
-          <p>See which muscle groups you train the most.</p>
+          <p>Your most trained muscle groups</p>
         </div>
 
         <div className="stats-bars-wrap">
           {muscleStats.length === 0 ? (
-            <div className="empty-state-card">No muscle data yet.</div>
+            <div className="empty-state-card">No workout data yet.</div>
           ) : (
             muscleStats.map((item) => (
               <div key={item.label} className="stats-bar-card">
@@ -272,6 +226,7 @@ const Stats = () => {
                   <span>{item.label}</span>
                   <strong>{item.percent}%</strong>
                 </div>
+
                 <div className="stats-bar-track">
                   <div
                     className="stats-bar-fill"
@@ -282,95 +237,6 @@ const Stats = () => {
             ))
           )}
         </div>
-      </div>
-
-      <div className="premium-panel">
-        <div className="panel-header">
-          <h3>Equipment Split</h3>
-          <p>Compare bodyweight and weighted workouts.</p>
-        </div>
-
-        <div className="stats-bars-wrap">
-          {equipmentStats.length === 0 ? (
-            <div className="empty-state-card">No equipment data yet.</div>
-          ) : (
-            equipmentStats.map((item) => (
-              <div key={item.label} className="stats-bar-card">
-                <div className="stats-bar-top">
-                  <span>{item.label}</span>
-                  <strong>{item.percent}%</strong>
-                </div>
-                <div className="stats-bar-track">
-                  <div
-                    className="stats-bar-fill"
-                    style={{ width: `${item.percent}%` }}
-                  />
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="premium-panel">
-        <div className="panel-header">
-          <h3>Difficulty Split</h3>
-          <p>See how your workouts are spread across difficulty levels.</p>
-        </div>
-
-        <div className="stats-bars-wrap">
-          {difficultyStats.length === 0 ? (
-            <div className="empty-state-card">No difficulty data yet.</div>
-          ) : (
-            difficultyStats.map((item) => (
-              <div key={item.label} className="stats-bar-card">
-                <div className="stats-bar-top">
-                  <span>{item.label}</span>
-                  <strong>{item.percent}%</strong>
-                </div>
-                <div className="stats-bar-track">
-                  <div
-                    className="stats-bar-fill"
-                    style={{ width: `${item.percent}%` }}
-                  />
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="premium-panel">
-        <div className="panel-header">
-          <h3>Recent Workouts</h3>
-          <p>Your latest saved workout entries.</p>
-        </div>
-
-        {recentWorkouts.length === 0 ? (
-          <div className="empty-state-card">No recent workouts yet.</div>
-        ) : (
-          <div className="recent-workouts-list">
-            {recentWorkouts.map((item) => (
-              <div key={item.id} className="recent-workout-card">
-                <div className="recent-workout-top">
-                  <div>
-                    <h4>{item.workout}</h4>
-                    <p>
-                      {item.muscleGroup} • {item.equipmentType}
-                    </p>
-                  </div>
-                  <span className="recent-workout-badge">{item.difficulty}</span>
-                </div>
-
-                <div className="recent-workout-meta">
-                  <span>{item.totalSets || 0} sets</span>
-                  <span>{item.totalReps || 0} reps</span>
-                  <span>{item.dayName || "Day"}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </section>
   );
