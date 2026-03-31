@@ -1,3 +1,46 @@
+.stats-bars-wrap {
+  display: grid;
+  gap: 14px;
+}
+
+.stats-bar-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stats-bar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.stats-bar-top span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.95rem;
+}
+
+.stats-bar-top strong {
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.stats-bar-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.stats-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4f7cff, #22d3ee);
+  transition: width 0.9s ease;
+}
 .weekly-activity-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -76,4 +119,65 @@
   .weekly-bar-fill {
     max-width: 18px;
   }
+}
+.recent-workouts-list {
+  display: grid;
+  gap: 14px;
+}
+
+.recent-workout-card {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.recent-workout-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(79, 124, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(20, 28, 60, 0.22);
+}
+
+.recent-workout-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.recent-workout-top h4 {
+  margin: 0 0 4px;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.recent-workout-top p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.recent-workout-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(79, 124, 255, 0.14);
+  color: #dbe7ff;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.recent-workout-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.recent-workout-meta span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.82rem;
 }
