@@ -4,8 +4,6 @@ import { collection, getDocs } from "firebase/firestore";
 import "./Stats.css";
 
 const Stats = () => {
-  const [workouts, setWorkouts] = useState([]);
-
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [totalSets, setTotalSets] = useState(0);
   const [totalReps, setTotalReps] = useState(0);
@@ -14,6 +12,10 @@ const Stats = () => {
   const [muscleStats, setMuscleStats] = useState([]);
   const [equipmentStats, setEquipmentStats] = useState([]);
   const [difficultyStats, setDifficultyStats] = useState([]);
+
+  const [weeklyStats, setWeeklyStats] = useState([]);
+  const [weeklyWorkoutTotal, setWeeklyWorkoutTotal] = useState(0);
+  const [activeDays, setActiveDays] = useState(0);
 
   const fetchWorkouts = async () => {
     try {
@@ -24,7 +26,6 @@ const Stats = () => {
         ...doc.data(),
       }));
 
-      setWorkouts(data);
       calculateStats(data);
     } catch (error) {
       console.error("Error fetching workouts:", error);
@@ -39,6 +40,41 @@ const Stats = () => {
         percent: total > 0 ? Math.round((count / total) * 100) : 0,
       }))
       .sort((a, b) => b.count - a.count);
+  };
+
+  const buildWeeklyData = (data) => {
+    const today = new Date();
+    const weekDays = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const current = new Date();
+      current.setDate(today.getDate() - i);
+
+      const dateKey = current.toISOString().split("T")[0];
+      const dayLabel = current.toLocaleDateString("en-US", {
+        weekday: "short",
+      });
+
+      weekDays.push({
+        dateKey,
+        dayLabel,
+        count: 0,
+      });
+    }
+
+    data.forEach((item) => {
+      const foundDay = weekDays.find((day) => day.dateKey === item.dateKey);
+      if (foundDay) {
+        foundDay.count += 1;
+      }
+    });
+
+    const total = weekDays.reduce((sum, day) => sum + day.count, 0);
+    const active = weekDays.filter((day) => day.count > 0).length;
+
+    setWeeklyStats(weekDays);
+    setWeeklyWorkoutTotal(total);
+    setActiveDays(active);
   };
 
   const calculateStats = (data) => {
@@ -85,11 +121,15 @@ const Stats = () => {
     setMuscleStats(buildPercentageArray(muscleCount, data.length));
     setEquipmentStats(buildPercentageArray(equipmentCount, data.length));
     setDifficultyStats(buildPercentageArray(difficultyCount, data.length));
+
+    buildWeeklyData(data);
   };
 
   useEffect(() => {
     fetchWorkouts();
   }, []);
+
+  const maxWeeklyCount = Math.max(...weeklyStats.map((day) => day.count), 1);
 
   return (
     <section className="page-section">
@@ -123,6 +163,43 @@ const Stats = () => {
         <div className="premium-stat-card">
           <span>Top Muscle</span>
           <strong>{topMuscle}</strong>
+        </div>
+
+        <div className="premium-stat-card">
+          <span>This Week</span>
+          <strong>{weeklyWorkoutTotal}</strong>
+        </div>
+
+        <div className="premium-stat-card">
+          <span>Active Days</span>
+          <strong>{activeDays}/7</strong>
+        </div>
+      </div>
+
+      <div className="premium-panel">
+        <div className="panel-header">
+          <h3>Weekly Activity</h3>
+          <p>See how active you were over the last 7 days.</p>
+        </div>
+
+        <div className="weekly-activity-grid">
+          {weeklyStats.map((day) => {
+            const heightPercent =
+              maxWeeklyCount > 0 ? Math.max((day.count / maxWeeklyCount) * 100, day.count > 0 ? 18 : 6) : 6;
+
+            return (
+              <div key={day.dateKey} className="weekly-day-card">
+                <div className="weekly-bar-wrap">
+                  <div
+                    className={`weekly-bar-fill ${day.count > 0 ? "active" : ""}`}
+                    style={{ height: `${heightPercent}%` }}
+                  />
+                </div>
+                <strong>{day.count}</strong>
+                <span>{day.dayLabel}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
