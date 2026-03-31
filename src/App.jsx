@@ -6,6 +6,7 @@ import BodyMap from "./pages/BodyMap";
 import Progress from "./pages/Progress";
 import Plans from "./pages/Plans";
 import Profile from "./pages/Profile";
+import Stats from "./pages/Stats";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="progress" element={<Progress />} />
           <Route path="plans" element={<Plans />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="stats" element={<Stats />} />
         </Route>
       </Routes>
     </BrowserRouter>

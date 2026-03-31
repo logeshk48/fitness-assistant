@@ -1,0 +1,79 @@
+.bodymap-page {
+  min-height: 100vh;
+  padding: 16px;
+  background: linear-gradient(180deg, #0f0f14 0%, #171821 100%);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.bodymap-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(22, 22, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 18px;
+  box-sizing: border-box;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.bodymap-title {
+  margin: 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.bodymap-subtitle {
+  margin: 8px 0 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #b8bcc7;
+}
+
+.bodymap-select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #20212b;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 18px;
+}
+
+.bodymap-svg-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0 12px;
+}
+
+.bodymap-svg {
+  width: 100%;
+  max-width: 230px;
+  height: auto;
+}
+
+.bodymap-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.bodymap-tag {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 107, 107, 0.14);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  color: #ffd5d5;
+  font-size: 12px;
+  text-transform: capitalize;
+}
