@@ -1,4 +1,4 @@
-
+import "./Workouts.css";
 import { useEffect, useMemo, useState } from "react";
 import {
   exercises,
@@ -50,26 +50,28 @@ const Workouts = () => {
     setSelectedVariation(firstWorkout.variations?.[0] || "");
     setSets(createDefaultSets());
   }, [filteredExercises]);
-  
+
   const fetchSavedWorkouts = async () => {
-  try {
-    const workoutsRef = collection(db, "workouts");
-    const q = query(workoutsRef, orderBy("createdAt", "desc"));
-    const querySnapshot = await getDocs(q);
+    try {
+      const workoutsRef = collection(db, "workouts");
+      const q = query(workoutsRef, orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(q);
 
-    const workouts = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+      const workouts = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-    setSavedWorkouts(workouts);
-  } catch (error) {
-    console.error("Error fetching workouts:", error);
-  }
+      setSavedWorkouts(workouts);
+    } catch (error) {
+      console.error("Error fetching workouts:", error);
+    }
   };
+
   useEffect(() => {
     fetchSavedWorkouts();
   }, []);
+
   const selectedWorkout = useMemo(() => {
     if (!filteredExercises.length) return null;
 
@@ -95,11 +97,12 @@ const Workouts = () => {
       prevSets.map((set) => (set.id === id ? { ...set, reps: value } : set))
     );
   };
+
   const handleSetWeightChange = (id, value) => {
-  setSets((prevSets) =>
-    prevSets.map((set) => (set.id === id ? { ...set, weight: value } : set))
-  );
-};
+    setSets((prevSets) =>
+      prevSets.map((set) => (set.id === id ? { ...set, weight: value } : set))
+    );
+  };
 
   const handleAddSet = () => {
     setSets((prevSets) => [
@@ -158,19 +161,23 @@ const Workouts = () => {
       await addDoc(collection(db, "workouts"), workoutEntry);
       await fetchSavedWorkouts();
       setSets(createDefaultSets());
-  }   catch (error) {
+    } catch (error) {
       console.error("Error saving workout:", error);
       alert("Failed to save workout.");
-  }
-};
+    }
+  };
 
   const totalSets = sets.length;
   const filledSets = sets.filter((set) => set.reps !== "").length;
 
   return (
-    <section className="page-section">
+    <section className="page-section workouts-page">
+      <div className="workouts-bg-orb orb-1" />
+      <div className="workouts-bg-orb orb-2" />
+      <div className="workouts-bg-grid" />
+
       <div className="premium-hero">
-        <div>
+        <div className="premium-hero-copy">
           <span className="hero-tag">Workout Engine</span>
           <h2>Build Your Workout</h2>
           <p>
@@ -382,6 +389,7 @@ const Workouts = () => {
                   handleSetRepsChange(set.id, event.target.value)
                 }
               />
+
               {selectedEquipment === "With Weight" && (
                 <input
                   type="number"
@@ -391,8 +399,8 @@ const Workouts = () => {
                   onChange={(event) =>
                     handleSetWeightChange(set.id, event.target.value)
                   }
-                  />
-                  )}
+                />
+              )}
 
               <button
                 type="button"
@@ -428,7 +436,10 @@ const Workouts = () => {
         ) : (
           <div className="saved-workouts-list">
             {savedWorkouts.map((item) => (
-              <div key={item.id} className="saved-workout-item premium-saved-card">
+              <div
+                key={item.id}
+                className="saved-workout-item premium-saved-card"
+              >
                 <div className="saved-workout-top">
                   <div>
                     <h4>{item.workout}</h4>
@@ -457,8 +468,8 @@ const Workouts = () => {
                       {item.equipmentType === "With Weight" && set.weight
                         ? ` • ${set.weight} kg`
                         : ""}
-                      </span>
-                    ))}
+                    </span>
+                  ))}
                 </div>
               </div>
             ))}
