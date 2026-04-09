@@ -1,24 +1,7 @@
 import "./Plans.css";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const activePlanData = {
-  id: "active-plan-1",
-  name: "Lean Muscle Builder",
-  goal: "Muscle Gain",
-  duration: "8 Weeks",
-  difficulty: "Intermediate",
-  daysPerWeek: 5,
-  progress: 42,
-  completedDays: 14,
-  remainingDays: 19,
-  estimatedWorkoutTime: 48,
-  status: "active",
-  currentWeek: 3,
-  badge: "Week 2 Complete",
-  reward: "Titan Consistency Badge",
-};
-
-const weeklyScheduleData = [
+const createInitialSchedule = () => [
   {
     id: 1,
     day: "Mon",
@@ -33,6 +16,8 @@ const weeklyScheduleData = [
       "Dumbbell Fly",
       "Tricep Kickbacks",
     ],
+    completed: true,
+    missed: false,
   },
   {
     id: 2,
@@ -48,6 +33,8 @@ const weeklyScheduleData = [
       "Hammer Curls",
       "Concentration Curls",
     ],
+    completed: true,
+    missed: false,
   },
   {
     id: 3,
@@ -58,6 +45,8 @@ const weeklyScheduleData = [
     status: "rest",
     estimatedTime: "Recovery",
     exercises: ["Light stretching", "Mobility work", "Walk for 20 minutes"],
+    completed: false,
+    missed: false,
   },
   {
     id: 4,
@@ -73,6 +62,8 @@ const weeklyScheduleData = [
       "Romanian Deadlifts",
       "Weighted Russian Twists",
     ],
+    completed: false,
+    missed: false,
   },
   {
     id: 5,
@@ -88,6 +79,8 @@ const weeklyScheduleData = [
       "Rear Delt Fly",
       "Standing Calf Raises",
     ],
+    completed: false,
+    missed: false,
   },
   {
     id: 6,
@@ -95,7 +88,7 @@ const weeklyScheduleData = [
     fullDay: "Saturday",
     title: "Full Body Conditioning",
     type: "workout",
-    status: "missed",
+    status: "upcoming",
     estimatedTime: "40 min",
     exercises: [
       "Burpees",
@@ -103,6 +96,8 @@ const weeklyScheduleData = [
       "Jumping Jacks",
       "High Knees",
     ],
+    completed: false,
+    missed: false,
   },
   {
     id: 7,
@@ -113,6 +108,8 @@ const weeklyScheduleData = [
     status: "rest",
     estimatedTime: "Reset",
     exercises: ["Foam rolling", "Stretching", "Hydration focus"],
+    completed: false,
+    missed: false,
   },
 ];
 
@@ -149,46 +146,210 @@ const recommendedPlansData = [
   },
 ];
 
-const achievementData = [
-  {
-    id: 1,
-    title: "Week Warrior",
-    subtitle: "Finish every workout this week",
-    state: "unlocked",
-  },
-  {
-    id: 2,
-    title: "Momentum Builder",
-    subtitle: "Complete 3 workout days in a row",
-    state: "active",
-  },
-  {
-    id: 3,
-    title: "Plan Finisher",
-    subtitle: "Unlock your end-of-plan reward",
-    state: "locked",
-  },
-];
-
 const Plans = () => {
+  const [weeklySchedule, setWeeklySchedule] = useState(createInitialSchedule());
   const [selectedDayId, setSelectedDayId] = useState(4);
+  const [expandedDayId, setExpandedDayId] = useState(4);
+  const [successPulse, setSuccessPulse] = useState(false);
+  const [weekBadgePop, setWeekBadgePop] = useState(false);
+
+  const basePlan = useMemo(
+    () => ({
+      id: "active-plan-1",
+      name: "Lean Muscle Builder",
+      goal: "Muscle Gain",
+      duration: "8 Weeks",
+      difficulty: "Intermediate",
+      estimatedWorkoutTime: 48,
+      currentWeek: 3,
+      reward: "Titan Consistency Badge",
+    }),
+    []
+  );
+
+  const derivedSchedule = useMemo(() => {
+    const workoutDays = weeklySchedule.filter((day) => day.type === "workout");
+
+    const firstPendingWorkoutIndex = workoutDays.findIndex(
+      (day) => !day.completed && !day.missed
+    );
+
+    return weeklySchedule.map((day) => {
+      if (day.type === "rest") {
+        return { ...day, status: "rest" };
+      }
+
+      if (day.completed) {
+        return { ...day, status: "completed" };
+      }
+
+      if (day.missed) {
+        return { ...day, status: "missed" };
+      }
+
+      const workoutIndex = workoutDays.findIndex((item) => item.id === day.id);
+
+      if (workoutIndex === firstPendingWorkoutIndex) {
+        return { ...day, status: "today" };
+      }
+
+      return { ...day, status: "upcoming" };
+    });
+  }, [weeklySchedule]);
 
   const selectedDay = useMemo(() => {
     return (
-      weeklyScheduleData.find((day) => day.id === selectedDayId) ||
-      weeklyScheduleData[0]
+      derivedSchedule.find((day) => day.id === selectedDayId) || derivedSchedule[0]
     );
-  }, [selectedDayId]);
+  }, [derivedSchedule, selectedDayId]);
 
   const todayWorkout = useMemo(() => {
     return (
-      weeklyScheduleData.find((day) => day.status === "today") ||
-      weeklyScheduleData.find((day) => day.type === "workout") ||
-      weeklyScheduleData[0]
+      derivedSchedule.find((day) => day.status === "today") ||
+      derivedSchedule.find((day) => day.type === "workout" && !day.completed) ||
+      derivedSchedule.find((day) => day.type === "workout") ||
+      derivedSchedule[0]
     );
-  }, []);
+  }, [derivedSchedule]);
 
-  const completionText = `${activePlanData.progress}% Completed`;
+  const workoutDaysCount = useMemo(() => {
+    return derivedSchedule.filter((day) => day.type === "workout").length;
+  }, [derivedSchedule]);
+
+  const completedDays = useMemo(() => {
+    return derivedSchedule.filter(
+      (day) => day.type === "workout" && day.completed
+    ).length;
+  }, [derivedSchedule]);
+
+  const remainingDays = useMemo(() => {
+    return derivedSchedule.filter(
+      (day) => day.type === "workout" && !day.completed
+    ).length;
+  }, [derivedSchedule]);
+
+  const missedDays = useMemo(() => {
+    return derivedSchedule.filter(
+      (day) => day.type === "workout" && day.missed && !day.completed
+    ).length;
+  }, [derivedSchedule]);
+
+  const daysPerWeek = workoutDaysCount;
+
+  const progress = useMemo(() => {
+    if (workoutDaysCount === 0) return 0;
+    return Math.round((completedDays / workoutDaysCount) * 100);
+  }, [completedDays, workoutDaysCount]);
+
+  const completionText = `${progress}% Completed`;
+
+  const currentBadge = useMemo(() => {
+    if (progress === 100) return "Plan Complete";
+    if (completedDays >= 4) return "Week Warrior";
+    if (completedDays >= 2) return "Week Momentum";
+    return "Week in Progress";
+  }, [progress, completedDays]);
+
+  const weekCompletionUnlocked = completedDays === workoutDaysCount && workoutDaysCount > 0;
+
+  const activePlan = useMemo(
+    () => ({
+      ...basePlan,
+      progress,
+      completedDays,
+      remainingDays,
+      daysPerWeek,
+      badge: currentBadge,
+      status: progress === 100 ? "completed" : "active",
+    }),
+    [basePlan, progress, completedDays, remainingDays, daysPerWeek, currentBadge]
+  );
+
+  useEffect(() => {
+    if (!derivedSchedule.some((day) => day.id === selectedDayId)) {
+      setSelectedDayId(derivedSchedule[0]?.id || 1);
+    }
+  }, [derivedSchedule, selectedDayId]);
+
+  const handleSelectDay = (dayId) => {
+    setSelectedDayId(dayId);
+
+    if (expandedDayId === dayId) {
+      setExpandedDayId(null);
+    } else {
+      setExpandedDayId(dayId);
+    }
+  };
+
+  const handleMarkComplete = () => {
+    if (!selectedDay || selectedDay.type !== "workout" || selectedDay.completed) {
+      return;
+    }
+
+    setWeeklySchedule((prev) =>
+      prev.map((day) =>
+        day.id === selectedDay.id
+          ? {
+              ...day,
+              completed: true,
+              missed: false,
+            }
+          : day
+      )
+    );
+
+    setSuccessPulse(true);
+    setTimeout(() => setSuccessPulse(false), 900);
+  };
+
+  const handleContinuePlan = () => {
+    setSelectedDayId(todayWorkout.id);
+    setExpandedDayId(todayWorkout.id);
+  };
+
+  const handleReplaceWorkout = () => {
+    if (!selectedDay || selectedDay.type !== "workout") return;
+
+    setWeeklySchedule((prev) =>
+      prev.map((day) =>
+        day.id === selectedDay.id
+          ? {
+              ...day,
+              title: `${day.title} Alt`,
+              exercises: day.exercises.map((exercise, index) =>
+                index === 0 ? `${exercise} Variation` : exercise
+              ),
+            }
+          : day
+      )
+    );
+  };
+
+  const handleMarkMissed = () => {
+    if (!selectedDay || selectedDay.type !== "workout" || selectedDay.completed) {
+      return;
+    }
+
+    setWeeklySchedule((prev) =>
+      prev.map((day) =>
+        day.id === selectedDay.id
+          ? {
+              ...day,
+              missed: true,
+              completed: false,
+            }
+          : day
+      )
+    );
+  };
+
+  useEffect(() => {
+    if (weekCompletionUnlocked) {
+      setWeekBadgePop(true);
+      const timer = setTimeout(() => setWeekBadgePop(false), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [weekCompletionUnlocked]);
 
   return (
     <section className="page-section plans-page">
@@ -201,37 +362,41 @@ const Plans = () => {
           <div className="plans-hero-top">
             <div>
               <span className="plans-hero-tag">Plan Engine</span>
-              <h2>{activePlanData.name}</h2>
+              <h2>{activePlan.name}</h2>
               <p>
                 Stay locked into your weekly structure with one clear active
                 plan, one strong focus, and premium progress tracking.
               </p>
             </div>
 
-            <button type="button" className="plans-primary-btn pulse-soft">
-              Continue Plan
+            <button
+              type="button"
+              className="plans-primary-btn pulse-soft"
+              onClick={handleContinuePlan}
+            >
+              {progress === 100 ? "Plan Completed" : "Continue Plan"}
             </button>
           </div>
 
           <div className="plans-meta-grid">
             <div className="plans-meta-card">
               <span>Goal</span>
-              <strong>{activePlanData.goal}</strong>
+              <strong>{activePlan.goal}</strong>
             </div>
 
             <div className="plans-meta-card">
               <span>Duration</span>
-              <strong>{activePlanData.duration}</strong>
+              <strong>{activePlan.duration}</strong>
             </div>
 
             <div className="plans-meta-card">
               <span>Difficulty</span>
-              <strong>{activePlanData.difficulty}</strong>
+              <strong>{activePlan.difficulty}</strong>
             </div>
 
             <div className="plans-meta-card">
               <span>Days / Week</span>
-              <strong>{activePlanData.daysPerWeek} Days</strong>
+              <strong>{activePlan.daysPerWeek} Days</strong>
             </div>
           </div>
 
@@ -240,7 +405,7 @@ const Plans = () => {
               <div>
                 <h3>Plan Progress</h3>
                 <p>
-                  Week {activePlanData.currentWeek} • {completionText}
+                  Week {activePlan.currentWeek} • {completionText}
                 </p>
               </div>
 
@@ -250,24 +415,24 @@ const Plans = () => {
             <div className="plans-progress-bar">
               <div
                 className="plans-progress-fill"
-                style={{ width: `${activePlanData.progress}%` }}
+                style={{ width: `${activePlan.progress}%` }}
               />
             </div>
 
             <div className="plans-progress-stats">
               <div className="plans-mini-stat">
                 <span>Completed</span>
-                <strong>{activePlanData.completedDays} days</strong>
+                <strong>{activePlan.completedDays} days</strong>
               </div>
 
               <div className="plans-mini-stat">
                 <span>Remaining</span>
-                <strong>{activePlanData.remainingDays} days</strong>
+                <strong>{activePlan.remainingDays} days</strong>
               </div>
 
               <div className="plans-mini-stat">
                 <span>Badge</span>
-                <strong>{activePlanData.badge}</strong>
+                <strong>{activePlan.badge}</strong>
               </div>
             </div>
           </div>
@@ -289,19 +454,27 @@ const Plans = () => {
                 >
                   {todayWorkout.status === "today"
                     ? "Today's Session"
-                    : "Scheduled"}
+                    : todayWorkout.status === "completed"
+                    ? "Completed"
+                    : todayWorkout.status === "rest"
+                    ? "Rest Day"
+                    : todayWorkout.status === "missed"
+                    ? "Missed"
+                    : "Upcoming"}
                 </span>
               </div>
 
               <div className="today-workout-card">
                 <div className="today-workout-main">
-                  <div className="today-icon">⚡</div>
+                  <div className="today-icon">
+                    {todayWorkout.type === "rest" ? "🌙" : "⚡"}
+                  </div>
 
                   <div>
                     <h4>{todayWorkout.title}</h4>
                     <p>
                       {todayWorkout.fullDay} • {todayWorkout.exercises.length}{" "}
-                      exercises
+                      items
                     </p>
                   </div>
                 </div>
@@ -314,21 +487,33 @@ const Plans = () => {
 
                   <div className="mini-info-chip">
                     <span>Goal</span>
-                    <strong>{activePlanData.goal}</strong>
+                    <strong>{activePlan.goal}</strong>
                   </div>
 
                   <div className="mini-info-chip">
                     <span>Level</span>
-                    <strong>{activePlanData.difficulty}</strong>
+                    <strong>{activePlan.difficulty}</strong>
                   </div>
                 </div>
 
                 <div className="today-workout-actions">
-                  <button type="button" className="plans-primary-btn">
-                    Start Workout
+                  <button
+                    type="button"
+                    className="plans-primary-btn"
+                    onClick={handleContinuePlan}
+                  >
+                    {todayWorkout.type === "rest" ? "View Day" : "Start Workout"}
                   </button>
-                  <button type="button" className="plans-secondary-btn">
-                    Replace Workout
+
+                  <button
+                    type="button"
+                    className="plans-secondary-btn"
+                    onClick={() => {
+                      setSelectedDayId(todayWorkout.id);
+                      setExpandedDayId(todayWorkout.id);
+                    }}
+                  >
+                    View Details
                   </button>
                 </div>
               </div>
@@ -342,19 +527,19 @@ const Plans = () => {
                 </div>
 
                 <span className="panel-hint">
-                  Tap a day to view workout details
+                  Tap a day to expand workout details
                 </span>
               </div>
 
               <div className="weekly-schedule-grid">
-                {weeklyScheduleData.map((day) => (
+                {derivedSchedule.map((day) => (
                   <button
                     key={day.id}
                     type="button"
                     className={`week-day-card ${
                       selectedDayId === day.id ? "selected" : ""
                     } ${day.status}`}
-                    onClick={() => setSelectedDayId(day.id)}
+                    onClick={() => handleSelectDay(day.id)}
                   >
                     <span className="week-day-label">{day.day}</span>
                     <strong>{day.title}</strong>
@@ -363,61 +548,109 @@ const Plans = () => {
                 ))}
               </div>
 
-              <div className="day-details-card">
-                <div className="day-details-top">
-                  <div>
-                    <span className="section-kicker">Workout Details</span>
-                    <h4>
-                      {selectedDay.fullDay} • {selectedDay.title}
-                    </h4>
-                  </div>
+              {derivedSchedule.map((day) => {
+                const isOpen = expandedDayId === day.id;
+                const isSelected = selectedDayId === day.id;
 
+                return (
                   <div
-                    className={`status-pill detail-status ${selectedDay.status}`}
+                    key={day.id}
+                    className={`day-accordion ${isOpen ? "open" : ""} ${
+                      isSelected ? "active" : ""
+                    }`}
                   >
-                    {selectedDay.status === "completed" && "Completed"}
-                    {selectedDay.status === "today" && "Today"}
-                    {selectedDay.status === "upcoming" && "Upcoming"}
-                    {selectedDay.status === "missed" && "Missed"}
-                    {selectedDay.status === "rest" && "Rest Day"}
-                  </div>
-                </div>
+                    <div className="day-accordion-inner">
+                      <div className="day-details-card">
+                        <div className="day-details-top">
+                          <div>
+                            <span className="section-kicker">Workout Details</span>
+                            <h4>
+                              {day.fullDay} • {day.title}
+                            </h4>
+                          </div>
 
-                <div className="day-details-meta">
-                  <div className="detail-chip">
-                    <span>Estimated Time</span>
-                    <strong>{selectedDay.estimatedTime}</strong>
-                  </div>
+                          <div className={`status-pill detail-status ${day.status}`}>
+                            {day.status === "completed" && "Completed"}
+                            {day.status === "today" && "Today"}
+                            {day.status === "upcoming" && "Upcoming"}
+                            {day.status === "missed" && "Missed"}
+                            {day.status === "rest" && "Rest Day"}
+                          </div>
+                        </div>
 
-                  <div className="detail-chip">
-                    <span>Exercises</span>
-                    <strong>{selectedDay.exercises.length}</strong>
-                  </div>
+                        <div className="day-details-meta">
+                          <div className="detail-chip">
+                            <span>Estimated Time</span>
+                            <strong>{day.estimatedTime}</strong>
+                          </div>
 
-                  <div className="detail-chip">
-                    <span>Plan Track</span>
-                    <strong>{activePlanData.name}</strong>
-                  </div>
-                </div>
+                          <div className="detail-chip">
+                            <span>Exercises</span>
+                            <strong>{day.exercises.length}</strong>
+                          </div>
 
-                <div className="exercise-list">
-                  {selectedDay.exercises.map((exercise) => (
-                    <div key={exercise} className="exercise-row">
-                      <span className="exercise-dot" />
-                      <p>{exercise}</p>
+                          <div className="detail-chip">
+                            <span>Plan Track</span>
+                            <strong>{activePlan.name}</strong>
+                          </div>
+                        </div>
+
+                        <div className="exercise-list">
+                          {day.exercises.map((exercise) => (
+                            <div key={exercise} className="exercise-row">
+                              <span className="exercise-dot" />
+                              <p>{exercise}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="day-details-actions">
+                          {day.type === "workout" && (
+                            <>
+                              <button
+                                type="button"
+                                className={`plans-primary-btn success-btn ${
+                                  successPulse && selectedDayId === day.id
+                                    ? "completed-pulse"
+                                    : ""
+                                }`}
+                                onClick={handleMarkComplete}
+                                disabled={day.completed}
+                              >
+                                {day.completed ? "Completed" : "Mark as Complete"}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="plans-secondary-btn"
+                                onClick={handleReplaceWorkout}
+                              >
+                                Replace Workout
+                              </button>
+
+                              {!day.completed && (
+                                <button
+                                  type="button"
+                                  className="plans-secondary-btn danger-btn"
+                                  onClick={handleMarkMissed}
+                                >
+                                  Mark Missed
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {day.type === "rest" && (
+                            <button type="button" className="plans-secondary-btn">
+                              Recovery Day
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="day-details-actions">
-                  <button type="button" className="plans-primary-btn success-btn">
-                    Mark as Complete
-                  </button>
-                  <button type="button" className="plans-secondary-btn">
-                    Replace Workout
-                  </button>
-                </div>
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -433,19 +666,33 @@ const Plans = () => {
               <div className="summary-stack">
                 <div className="summary-card highlight">
                   <span>Plan Completion</span>
-                  <strong>{activePlanData.progress}%</strong>
+                  <strong>{activePlan.progress}%</strong>
                   <p>You're building strong momentum this cycle.</p>
                 </div>
 
                 <div className="summary-card">
+                  <span>Completed vs Remaining</span>
+                  <strong>
+                    {activePlan.completedDays} / {activePlan.remainingDays}
+                  </strong>
+                  <p>Track finished and pending workout days clearly.</p>
+                </div>
+
+                <div className="summary-card">
                   <span>Workout Time</span>
-                  <strong>{activePlanData.estimatedWorkoutTime} min avg</strong>
+                  <strong>{activePlan.estimatedWorkoutTime} min avg</strong>
                   <p>Balanced duration for consistency and recovery.</p>
                 </div>
 
                 <div className="summary-card">
+                  <span>Missed Workouts</span>
+                  <strong>{missedDays} day{missedDays !== 1 ? "s" : ""}</strong>
+                  <p>Missed days stay visible so the schedule stays honest.</p>
+                </div>
+
+                <div className="summary-card">
                   <span>Next Reward</span>
-                  <strong>{activePlanData.reward}</strong>
+                  <strong>{activePlan.reward}</strong>
                   <p>Finish this week to unlock your premium badge.</p>
                 </div>
               </div>
@@ -496,27 +743,46 @@ const Plans = () => {
                 </div>
               </div>
 
-              <div className="achievement-card">
+              <div className={`achievement-card ${weekBadgePop ? "badge-burst" : ""}`}>
                 <div className="achievement-badge">🏆</div>
                 <div>
-                  <h4>{activePlanData.badge}</h4>
-                  <p>Keep your rhythm strong and unlock your end-plan reward.</p>
+                  <h4>{activePlan.badge}</h4>
+                  <p>
+                    {weekCompletionUnlocked
+                      ? "Full week completed. Premium reward unlocked."
+                      : "Keep your rhythm strong and unlock your end-plan reward."}
+                  </p>
                 </div>
               </div>
 
               <div className="achievement-list">
-                {achievementData.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`achievement-row ${item.state}`}
-                  >
-                    <div className="achievement-state-dot" />
-                    <div>
-                      <h5>{item.title}</h5>
-                      <p>{item.subtitle}</p>
-                    </div>
+                <div className={`achievement-row ${completedDays >= 2 ? "unlocked" : "active"}`}>
+                  <div className="achievement-state-dot" />
+                  <div>
+                    <h5>Momentum Builder</h5>
+                    <p>Complete 2 workout days to build early momentum.</p>
                   </div>
-                ))}
+                </div>
+
+                <div className={`achievement-row ${completedDays >= 4 ? "unlocked" : "active"}`}>
+                  <div className="achievement-state-dot" />
+                  <div>
+                    <h5>Week Warrior</h5>
+                    <p>Finish 4 workout days to earn your weekly badge.</p>
+                  </div>
+                </div>
+
+                <div
+                  className={`achievement-row ${
+                    progress === 100 ? "unlocked" : "locked"
+                  }`}
+                >
+                  <div className="achievement-state-dot" />
+                  <div>
+                    <h5>Plan Finisher</h5>
+                    <p>Complete the full plan cycle to unlock your final reward.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
