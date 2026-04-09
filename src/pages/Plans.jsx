@@ -1,5 +1,17 @@
 import "./Plans.css";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { db } from "../firebase";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  doc,
+} from "firebase/firestore";
 
 const createInitialSchedule = () => [
   {
@@ -146,26 +158,34 @@ const recommendedPlansData = [
   },
 ];
 
+const defaultPlanDocument = () => ({
+  name: "Lean Muscle Builder",
+  goal: "Muscle Gain",
+  duration: "8 Weeks",
+  difficulty: "Intermediate",
+  estimatedWorkoutTime: 48,
+  currentWeek: 3,
+  reward: "Titan Consistency Badge",
+  selectedDayId: 4,
+  expandedDayId: 4,
+  weeklySchedule: createInitialSchedule(),
+});
+
 const Plans = () => {
-  const [weeklySchedule, setWeeklySchedule] = useState(createInitialSchedule());
-  const [selectedDayId, setSelectedDayId] = useState(4);
-  const [expandedDayId, setExpandedDayId] = useState(4);
+  const [planId, setPlanId] = useState(null);
+  const [planData, setPlanData] = useState(defaultPlanDocument());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [successPulse, setSuccessPulse] = useState(false);
   const [weekBadgePop, setWeekBadgePop] = useState(false);
 
-  const basePlan = useMemo(
-    () => ({
-      id: "active-plan-1",
-      name: "Lean Muscle Builder",
-      goal: "Muscle Gain",
-      duration: "8 Weeks",
-      difficulty: "Intermediate",
-      estimatedWorkoutTime: 48,
-      currentWeek: 3,
-      reward: "Titan Consistency Badge",
-    }),
-    []
-  );
+  const hasLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef(null);
+
+  const selectedDayId = planData.selectedDayId;
+  const expandedDayId = planData.expandedDayId;
+  const weeklySchedule = planData.weeklySchedule;
 
   const derivedSchedule = useMemo(() => {
     const workoutDays = weeklySchedule.filter((day) => day.type === "workout");
@@ -234,8 +254,6 @@ const Plans = () => {
     ).length;
   }, [derivedSchedule]);
 
-  const daysPerWeek = workoutDaysCount;
-
   const progress = useMemo(() => {
     if (workoutDaysCount === 0) return 0;
     return Math.round((completedDays / workoutDaysCount) * 100);
@@ -250,35 +268,203 @@ const Plans = () => {
     return "Week in Progress";
   }, [progress, completedDays]);
 
-  const weekCompletionUnlocked = completedDays === workoutDaysCount && workoutDaysCount > 0;
+  const weekCompletionUnlocked =
+    completedDays === workoutDaysCount && workoutDaysCount > 0;
 
   const activePlan = useMemo(
     () => ({
-      ...basePlan,
+      id: planId || "active-plan-1",
+      name: planData.name,
+      goal: planData.goal,
+      duration: planData.duration,
+      difficulty: planData.difficulty,
+      estimatedWorkoutTime: planData.estimatedWorkoutTime,
+      currentWeek: planData.currentWeek,
+      reward: planData.reward,
       progress,
       completedDays,
       remainingDays,
-      daysPerWeek,
+      daysPerWeek: workoutDaysCount,
       badge: currentBadge,
       status: progress === 100 ? "completed" : "active",
     }),
-    [basePlan, progress, completedDays, remainingDays, daysPerWeek, currentBadge]
+    [planId, planData, progress, completedDays, remainingDays, workoutDaysCount, currentBadge]
   );
+
+  const buildPersistedPayload = () => ({
+    name: planData.name,
+    goal: planData.goal,
+    duration: planData.duration,
+    difficulty: planData.difficulty,
+    estimatedWorkoutTime: planData.estimatedWorkoutTime,
+    currentWeek: planData.currentWeek,
+    reward: planData.reward,
+    selectedDayId: planData.selectedDayId,
+    expandedDayId: planData.expandedDayId,
+    weeklySchedule: derivedSchedule.map(({ status, ...day }) => day),
+    progress,
+    completedDays,
+    remainingDays,
+    daysPerWeek: workoutDaysCount,
+    missedDays,
+    badge: currentBadge,
+  });
+
+  useEffect(() => {
+    const fetchOrCreatePlan = async () => {
+      setLoading(true);
+      setErrorMessage("");
+
+      try {
+        const plansRef = collection(db, "plans");
+        const plansQuery = query(
+          plansRef,
+          orderBy("createdAt", "desc"),
+          limit(1)
+        );
+        const snapshot = await getDocs(plansQuery);
+
+        if (!snapshot.empty) {
+          const existingDoc = snapshot.docs[0];
+          const data = existingDoc.data();
+
+          setPlanId(existingDoc.id);
+          setPlanData({
+            name: data.name || "Lean Muscle Builder",
+            goal: data.goal || "Muscle Gain",
+            duration: data.duration || "8 Weeks",
+            difficulty: data.difficulty || "Intermediate",
+            estimatedWorkoutTime: data.estimatedWorkoutTime || 48,
+            currentWeek: data.currentWeek || 3,
+            reward: data.reward || "Titan Consistency Badge",
+            selectedDayId: data.selectedDayId || 4,
+            expandedDayId:
+              typeof data.expandedDayId === "number" ? data.expandedDayId : 4,
+            weeklySchedule:
+              Array.isArray(data.weeklySchedule) && data.weeklySchedule.length > 0
+                ? data.weeklySchedule
+                : createInitialSchedule(),
+          });
+        } else {
+          const initialPlan = defaultPlanDocument();
+
+          const docRef = await addDoc(collection(db, "plans"), {
+            ...initialPlan,
+            progress: 40,
+            completedDays: 2,
+            remainingDays: 3,
+            daysPerWeek: 5,
+            missedDays: 0,
+            badge: "Week Momentum",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+
+          setPlanId(docRef.id);
+          setPlanData(initialPlan);
+        }
+
+        hasLoadedRef.current = true;
+      } catch (error) {
+        console.error("Error loading plan:", error);
+        setErrorMessage("Failed to load plan data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrCreatePlan();
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!derivedSchedule.some((day) => day.id === selectedDayId)) {
-      setSelectedDayId(derivedSchedule[0]?.id || 1);
+      setPlanData((prev) => ({
+        ...prev,
+        selectedDayId: derivedSchedule[0]?.id || 1,
+      }));
     }
   }, [derivedSchedule, selectedDayId]);
 
-  const handleSelectDay = (dayId) => {
-    setSelectedDayId(dayId);
-
-    if (expandedDayId === dayId) {
-      setExpandedDayId(null);
-    } else {
-      setExpandedDayId(dayId);
+  useEffect(() => {
+    if (!derivedSchedule.some((day) => day.id === expandedDayId) && derivedSchedule[0]) {
+      setPlanData((prev) => ({
+        ...prev,
+        expandedDayId: derivedSchedule[0].id,
+      }));
     }
+  }, [derivedSchedule, expandedDayId]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !planId) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        setSaving(true);
+        const payload = buildPersistedPayload();
+
+        await updateDoc(doc(db, "plans", planId), {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        });
+
+        setErrorMessage("");
+      } catch (error) {
+        console.error("Error saving plan:", error);
+        setErrorMessage("Failed to save latest plan changes.");
+      } finally {
+        setSaving(false);
+      }
+    }, 350);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [
+    planId,
+    planData,
+    derivedSchedule,
+    progress,
+    completedDays,
+    remainingDays,
+    workoutDaysCount,
+    missedDays,
+    currentBadge,
+  ]);
+
+  useEffect(() => {
+    if (weekCompletionUnlocked) {
+      setWeekBadgePop(true);
+      const timer = setTimeout(() => setWeekBadgePop(false), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [weekCompletionUnlocked]);
+
+  const handleSelectDay = (dayId) => {
+    setPlanData((prev) => ({
+      ...prev,
+      selectedDayId: dayId,
+      expandedDayId: prev.expandedDayId === dayId ? null : dayId,
+    }));
+  };
+
+  const handleContinuePlan = () => {
+    setPlanData((prev) => ({
+      ...prev,
+      selectedDayId: todayWorkout.id,
+      expandedDayId: todayWorkout.id,
+    }));
   };
 
   const handleMarkComplete = () => {
@@ -286,8 +472,9 @@ const Plans = () => {
       return;
     }
 
-    setWeeklySchedule((prev) =>
-      prev.map((day) =>
+    setPlanData((prev) => ({
+      ...prev,
+      weeklySchedule: prev.weeklySchedule.map((day) =>
         day.id === selectedDay.id
           ? {
               ...day,
@@ -295,23 +482,19 @@ const Plans = () => {
               missed: false,
             }
           : day
-      )
-    );
+      ),
+    }));
 
     setSuccessPulse(true);
     setTimeout(() => setSuccessPulse(false), 900);
   };
 
-  const handleContinuePlan = () => {
-    setSelectedDayId(todayWorkout.id);
-    setExpandedDayId(todayWorkout.id);
-  };
-
   const handleReplaceWorkout = () => {
     if (!selectedDay || selectedDay.type !== "workout") return;
 
-    setWeeklySchedule((prev) =>
-      prev.map((day) =>
+    setPlanData((prev) => ({
+      ...prev,
+      weeklySchedule: prev.weeklySchedule.map((day) =>
         day.id === selectedDay.id
           ? {
               ...day,
@@ -321,8 +504,8 @@ const Plans = () => {
               ),
             }
           : day
-      )
-    );
+      ),
+    }));
   };
 
   const handleMarkMissed = () => {
@@ -330,8 +513,9 @@ const Plans = () => {
       return;
     }
 
-    setWeeklySchedule((prev) =>
-      prev.map((day) =>
+    setPlanData((prev) => ({
+      ...prev,
+      weeklySchedule: prev.weeklySchedule.map((day) =>
         day.id === selectedDay.id
           ? {
               ...day,
@@ -339,17 +523,53 @@ const Plans = () => {
               completed: false,
             }
           : day
-      )
-    );
+      ),
+    }));
   };
 
-  useEffect(() => {
-    if (weekCompletionUnlocked) {
-      setWeekBadgePop(true);
-      const timer = setTimeout(() => setWeekBadgePop(false), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [weekCompletionUnlocked]);
+  if (loading) {
+    return (
+      <section className="page-section plans-page">
+        <div className="plans-bg-orb plans-orb-1" />
+        <div className="plans-bg-orb plans-orb-2" />
+        <div className="plans-bg-grid" />
+
+        <div className="plans-shell">
+          <div className="plans-hero-card fade-up delay-1">
+            <div className="plans-hero-top">
+              <div>
+                <span className="plans-hero-tag">Plan Engine</span>
+                <h2>Loading Plan...</h2>
+                <p>Fetching your active plan from Firebase.</p>
+              </div>
+            </div>
+
+            <div className="plans-meta-grid">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={item} className="plans-meta-card">
+                  <span>Loading</span>
+                  <strong>...</strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="plans-progress-block">
+              <div className="plans-progress-header">
+                <div>
+                  <h3>Please wait</h3>
+                  <p>Your plan data is being prepared.</p>
+                </div>
+              </div>
+
+              <div className="plans-progress-bar">
+                <div className="plans-progress-fill" style={{ width: "35%" }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="page-section plans-page">
@@ -435,6 +655,19 @@ const Plans = () => {
                 <strong>{activePlan.badge}</strong>
               </div>
             </div>
+
+            {(saving || errorMessage) && (
+              <div
+                style={{
+                  marginTop: "14px",
+                  color: errorMessage ? "#ffc1cf" : "#9df3c5",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                }}
+              >
+                {errorMessage ? errorMessage : "Saving latest plan changes..."}
+              </div>
+            )}
           </div>
         </div>
 
@@ -508,10 +741,13 @@ const Plans = () => {
                   <button
                     type="button"
                     className="plans-secondary-btn"
-                    onClick={() => {
-                      setSelectedDayId(todayWorkout.id);
-                      setExpandedDayId(todayWorkout.id);
-                    }}
+                    onClick={() =>
+                      setPlanData((prev) => ({
+                        ...prev,
+                        selectedDayId: todayWorkout.id,
+                        expandedDayId: todayWorkout.id,
+                      }))
+                    }
                   >
                     View Details
                   </button>
@@ -756,7 +992,11 @@ const Plans = () => {
               </div>
 
               <div className="achievement-list">
-                <div className={`achievement-row ${completedDays >= 2 ? "unlocked" : "active"}`}>
+                <div
+                  className={`achievement-row ${
+                    completedDays >= 2 ? "unlocked" : "active"
+                  }`}
+                >
                   <div className="achievement-state-dot" />
                   <div>
                     <h5>Momentum Builder</h5>
@@ -764,7 +1004,11 @@ const Plans = () => {
                   </div>
                 </div>
 
-                <div className={`achievement-row ${completedDays >= 4 ? "unlocked" : "active"}`}>
+                <div
+                  className={`achievement-row ${
+                    completedDays >= 4 ? "unlocked" : "active"
+                  }`}
+                >
                   <div className="achievement-state-dot" />
                   <div>
                     <h5>Week Warrior</h5>
