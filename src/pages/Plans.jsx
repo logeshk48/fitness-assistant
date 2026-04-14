@@ -1,506 +1,246 @@
 import "./Plans.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   getDocs,
-  limit,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
-  doc,
 } from "firebase/firestore";
 
-const createInitialSchedule = () => [
-  {
-    id: 1,
-    day: "Mon",
-    fullDay: "Monday",
-    title: "Chest + Triceps",
-    type: "workout",
-    status: "completed",
-    estimatedTime: "50 min",
-    exercises: [
-      "Push-ups",
-      "Incline Dumbbell Press",
-      "Dumbbell Fly",
-      "Tricep Kickbacks",
-    ],
-    completed: true,
-    missed: false,
-  },
-  {
-    id: 2,
-    day: "Tue",
-    fullDay: "Tuesday",
-    title: "Back + Biceps",
-    type: "workout",
-    status: "completed",
-    estimatedTime: "45 min",
-    exercises: [
-      "Pull-ups",
-      "Dumbbell Rows",
-      "Hammer Curls",
-      "Concentration Curls",
-    ],
-    completed: true,
-    missed: false,
-  },
-  {
-    id: 3,
-    day: "Wed",
-    fullDay: "Wednesday",
-    title: "Rest Day",
-    type: "rest",
-    status: "rest",
-    estimatedTime: "Recovery",
-    exercises: ["Light stretching", "Mobility work", "Walk for 20 minutes"],
-    completed: false,
-    missed: false,
-  },
-  {
-    id: 4,
-    day: "Thu",
-    fullDay: "Thursday",
-    title: "Legs + Core",
-    type: "workout",
-    status: "today",
-    estimatedTime: "55 min",
-    exercises: [
-      "Goblet Squats",
-      "Dumbbell Lunges",
-      "Romanian Deadlifts",
-      "Weighted Russian Twists",
-    ],
-    completed: false,
-    missed: false,
-  },
-  {
-    id: 5,
-    day: "Fri",
-    fullDay: "Friday",
-    title: "Shoulders + Calves",
-    type: "workout",
-    status: "upcoming",
-    estimatedTime: "42 min",
-    exercises: [
-      "Dumbbell Shoulder Press",
-      "Lateral Raises",
-      "Rear Delt Fly",
-      "Standing Calf Raises",
-    ],
-    completed: false,
-    missed: false,
-  },
-  {
-    id: 6,
-    day: "Sat",
-    fullDay: "Saturday",
-    title: "Full Body Conditioning",
-    type: "workout",
-    status: "upcoming",
-    estimatedTime: "40 min",
-    exercises: [
-      "Burpees",
-      "Mountain Climbers",
-      "Jumping Jacks",
-      "High Knees",
-    ],
-    completed: false,
-    missed: false,
-  },
-  {
-    id: 7,
-    day: "Sun",
-    fullDay: "Sunday",
-    title: "Recovery Day",
-    type: "rest",
-    status: "rest",
-    estimatedTime: "Reset",
-    exercises: ["Foam rolling", "Stretching", "Hydration focus"],
-    completed: false,
-    missed: false,
-  },
+const goalOptions = [
+  "Muscle Gain",
+  "Fat Loss",
+  "Strength",
+  "Consistency",
+  "Endurance",
+  "General Fitness",
 ];
 
-const recommendedPlansData = [
-  {
-    id: "rec-1",
-    name: "Foundation Starter",
-    goal: "Consistency",
-    duration: "4 Weeks",
-    difficulty: "Beginner",
-    daysPerWeek: 3,
-    time: "30-35 min",
-    accent: "soft",
-  },
-  {
-    id: "rec-2",
-    name: "Strength Forge",
-    goal: "Strength",
-    duration: "12 Weeks",
-    difficulty: "Advanced",
-    daysPerWeek: 5,
-    time: "55-65 min",
-    accent: "strong",
-  },
-  {
-    id: "rec-3",
-    name: "Shred Sprint",
-    goal: "Fat Loss",
-    duration: "8 Weeks",
-    difficulty: "Intermediate",
-    daysPerWeek: 4,
-    time: "35-45 min",
-    accent: "electric",
-  },
+const durationOptions = ["4 Weeks", "8 Weeks", "12 Weeks"];
+
+const difficultyOptions = ["Beginner", "Intermediate", "Advanced"];
+
+const weekDays = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
 ];
 
-const defaultPlanDocument = () => ({
-  name: "Lean Muscle Builder",
-  goal: "Muscle Gain",
-  duration: "8 Weeks",
-  difficulty: "Intermediate",
-  estimatedWorkoutTime: 48,
-  currentWeek: 3,
-  reward: "Titan Consistency Badge",
-  selectedDayId: 4,
-  expandedDayId: 4,
-  weeklySchedule: createInitialSchedule(),
+const createExerciseRow = () => ({
+  id: Date.now() + Math.random(),
+  name: "",
+  sets: "",
+  reps: "",
 });
 
+const createDayBlock = (dayName = "Monday") => ({
+  id: Date.now() + Math.random(),
+  day: dayName,
+  focus: "",
+  exercises: [createExerciseRow()],
+});
+
+const createPlanDraft = () => ({
+  planName: "",
+  goal: "Muscle Gain",
+  duration: "8 Weeks",
+  difficulty: "Beginner",
+  daysPerWeek: 4,
+  days: [
+    createDayBlock("Monday"),
+    createDayBlock("Tuesday"),
+    createDayBlock("Thursday"),
+    createDayBlock("Saturday"),
+  ],
+});
+
+const sanitizeDays = (days) => {
+  return days.map((day, dayIndex) => ({
+    ...day,
+    id: day.id || Date.now() + dayIndex,
+    day: day.day || weekDays[dayIndex] || "Monday",
+    focus: day.focus || "",
+    exercises:
+      Array.isArray(day.exercises) && day.exercises.length > 0
+        ? day.exercises.map((exercise, exerciseIndex) => ({
+            id: exercise.id || Date.now() + exerciseIndex + Math.random(),
+            name: exercise.name || "",
+            sets: exercise.sets || "",
+            reps: exercise.reps || "",
+          }))
+        : [createExerciseRow()],
+  }));
+};
+
 const Plans = () => {
-  const [planId, setPlanId] = useState(null);
-  const [planData, setPlanData] = useState(defaultPlanDocument());
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successPulse, setSuccessPulse] = useState(false);
-  const [weekBadgePop, setWeekBadgePop] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState(null);
+  const [draft, setDraft] = useState(createPlanDraft());
 
-  const hasLoadedRef = useRef(false);
-  const saveTimeoutRef = useRef(null);
+  const plansRef = collection(db, "plans");
 
-  const selectedDayId = planData.selectedDayId;
-  const expandedDayId = planData.expandedDayId;
-  const weeklySchedule = planData.weeklySchedule;
+  const fetchPlans = async () => {
+    setLoading(true);
+    setErrorMessage("");
 
-  const derivedSchedule = useMemo(() => {
-    const workoutDays = weeklySchedule.filter((day) => day.type === "workout");
+    try {
+      const plansQuery = query(plansRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(plansQuery);
 
-    const firstPendingWorkoutIndex = workoutDays.findIndex(
-      (day) => !day.completed && !day.missed
-    );
+      const loadedPlans = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      }));
 
-    return weeklySchedule.map((day) => {
-      if (day.type === "rest") {
-        return { ...day, status: "rest" };
-      }
-
-      if (day.completed) {
-        return { ...day, status: "completed" };
-      }
-
-      if (day.missed) {
-        return { ...day, status: "missed" };
-      }
-
-      const workoutIndex = workoutDays.findIndex((item) => item.id === day.id);
-
-      if (workoutIndex === firstPendingWorkoutIndex) {
-        return { ...day, status: "today" };
-      }
-
-      return { ...day, status: "upcoming" };
-    });
-  }, [weeklySchedule]);
-
-  const selectedDay = useMemo(() => {
-    return (
-      derivedSchedule.find((day) => day.id === selectedDayId) || derivedSchedule[0]
-    );
-  }, [derivedSchedule, selectedDayId]);
-
-  const todayWorkout = useMemo(() => {
-    return (
-      derivedSchedule.find((day) => day.status === "today") ||
-      derivedSchedule.find((day) => day.type === "workout" && !day.completed) ||
-      derivedSchedule.find((day) => day.type === "workout") ||
-      derivedSchedule[0]
-    );
-  }, [derivedSchedule]);
-
-  const workoutDaysCount = useMemo(() => {
-    return derivedSchedule.filter((day) => day.type === "workout").length;
-  }, [derivedSchedule]);
-
-  const completedDays = useMemo(() => {
-    return derivedSchedule.filter(
-      (day) => day.type === "workout" && day.completed
-    ).length;
-  }, [derivedSchedule]);
-
-  const remainingDays = useMemo(() => {
-    return derivedSchedule.filter(
-      (day) => day.type === "workout" && !day.completed
-    ).length;
-  }, [derivedSchedule]);
-
-  const missedDays = useMemo(() => {
-    return derivedSchedule.filter(
-      (day) => day.type === "workout" && day.missed && !day.completed
-    ).length;
-  }, [derivedSchedule]);
-
-  const progress = useMemo(() => {
-    if (workoutDaysCount === 0) return 0;
-    return Math.round((completedDays / workoutDaysCount) * 100);
-  }, [completedDays, workoutDaysCount]);
-
-  const completionText = `${progress}% Completed`;
-
-  const currentBadge = useMemo(() => {
-    if (progress === 100) return "Plan Complete";
-    if (completedDays >= 4) return "Week Warrior";
-    if (completedDays >= 2) return "Week Momentum";
-    return "Week in Progress";
-  }, [progress, completedDays]);
-
-  const weekCompletionUnlocked =
-    completedDays === workoutDaysCount && workoutDaysCount > 0;
-
-  const activePlan = useMemo(
-    () => ({
-      id: planId || "active-plan-1",
-      name: planData.name,
-      goal: planData.goal,
-      duration: planData.duration,
-      difficulty: planData.difficulty,
-      estimatedWorkoutTime: planData.estimatedWorkoutTime,
-      currentWeek: planData.currentWeek,
-      reward: planData.reward,
-      progress,
-      completedDays,
-      remainingDays,
-      daysPerWeek: workoutDaysCount,
-      badge: currentBadge,
-      status: progress === 100 ? "completed" : "active",
-    }),
-    [planId, planData, progress, completedDays, remainingDays, workoutDaysCount, currentBadge]
-  );
-
-  const buildPersistedPayload = () => ({
-    name: planData.name,
-    goal: planData.goal,
-    duration: planData.duration,
-    difficulty: planData.difficulty,
-    estimatedWorkoutTime: planData.estimatedWorkoutTime,
-    currentWeek: planData.currentWeek,
-    reward: planData.reward,
-    selectedDayId: planData.selectedDayId,
-    expandedDayId: planData.expandedDayId,
-    weeklySchedule: derivedSchedule.map(({ status, ...day }) => day),
-    progress,
-    completedDays,
-    remainingDays,
-    daysPerWeek: workoutDaysCount,
-    missedDays,
-    badge: currentBadge,
-  });
+      setPlans(loadedPlans);
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+      setErrorMessage("Failed to load plans.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchOrCreatePlan = async () => {
-      setLoading(true);
-      setErrorMessage("");
-
-      try {
-        const plansRef = collection(db, "plans");
-        const plansQuery = query(
-          plansRef,
-          orderBy("createdAt", "desc"),
-          limit(1)
-        );
-        const snapshot = await getDocs(plansQuery);
-
-        if (!snapshot.empty) {
-          const existingDoc = snapshot.docs[0];
-          const data = existingDoc.data();
-
-          setPlanId(existingDoc.id);
-          setPlanData({
-            name: data.name || "Lean Muscle Builder",
-            goal: data.goal || "Muscle Gain",
-            duration: data.duration || "8 Weeks",
-            difficulty: data.difficulty || "Intermediate",
-            estimatedWorkoutTime: data.estimatedWorkoutTime || 48,
-            currentWeek: data.currentWeek || 3,
-            reward: data.reward || "Titan Consistency Badge",
-            selectedDayId: data.selectedDayId || 4,
-            expandedDayId:
-              typeof data.expandedDayId === "number" ? data.expandedDayId : 4,
-            weeklySchedule:
-              Array.isArray(data.weeklySchedule) && data.weeklySchedule.length > 0
-                ? data.weeklySchedule
-                : createInitialSchedule(),
-          });
-        } else {
-          const initialPlan = defaultPlanDocument();
-
-          const docRef = await addDoc(collection(db, "plans"), {
-            ...initialPlan,
-            progress: 40,
-            completedDays: 2,
-            remainingDays: 3,
-            daysPerWeek: 5,
-            missedDays: 0,
-            badge: "Week Momentum",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-
-          setPlanId(docRef.id);
-          setPlanData(initialPlan);
-        }
-
-        hasLoadedRef.current = true;
-      } catch (error) {
-        console.error("Error loading plan:", error);
-        setErrorMessage("Failed to load plan data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrCreatePlan();
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
+    fetchPlans();
   }, []);
 
-  useEffect(() => {
-    if (!derivedSchedule.some((day) => day.id === selectedDayId)) {
-      setPlanData((prev) => ({
-        ...prev,
-        selectedDayId: derivedSchedule[0]?.id || 1,
-      }));
-    }
-  }, [derivedSchedule, selectedDayId]);
+  const activePlan = useMemo(() => {
+    return plans.find((plan) => plan.isActive) || null;
+  }, [plans]);
 
-  useEffect(() => {
-    if (!derivedSchedule.some((day) => day.id === expandedDayId) && derivedSchedule[0]) {
-      setPlanData((prev) => ({
-        ...prev,
-        expandedDayId: derivedSchedule[0].id,
-      }));
-    }
-  }, [derivedSchedule, expandedDayId]);
+  const sortedPlans = useMemo(() => {
+    const active = plans.filter((plan) => plan.isActive);
+    const inactive = plans.filter((plan) => !plan.isActive);
+    return [...active, ...inactive];
+  }, [plans]);
 
-  useEffect(() => {
-    if (!hasLoadedRef.current || !planId) return;
+  const openCreateModal = () => {
+    setEditingPlanId(null);
+    setDraft(createPlanDraft());
+    setShowModal(true);
+    setErrorMessage("");
+  };
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+  const openEditModal = (plan) => {
+    setEditingPlanId(plan.id);
+    setDraft({
+      planName: plan.planName || "",
+      goal: plan.goal || "Muscle Gain",
+      duration: plan.duration || "8 Weeks",
+      difficulty: plan.difficulty || "Beginner",
+      daysPerWeek: plan.daysPerWeek || 4,
+      days: sanitizeDays(plan.days || []),
+    });
+    setShowModal(true);
+    setErrorMessage("");
+  };
 
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        setSaving(true);
-        const payload = buildPersistedPayload();
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingPlanId(null);
+    setDraft(createPlanDraft());
+  };
 
-        await updateDoc(doc(db, "plans", planId), {
-          ...payload,
-          updatedAt: serverTimestamp(),
-        });
-
-        setErrorMessage("");
-      } catch (error) {
-        console.error("Error saving plan:", error);
-        setErrorMessage("Failed to save latest plan changes.");
-      } finally {
-        setSaving(false);
-      }
-    }, 350);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [
-    planId,
-    planData,
-    derivedSchedule,
-    progress,
-    completedDays,
-    remainingDays,
-    workoutDaysCount,
-    missedDays,
-    currentBadge,
-  ]);
-
-  useEffect(() => {
-    if (weekCompletionUnlocked) {
-      setWeekBadgePop(true);
-      const timer = setTimeout(() => setWeekBadgePop(false), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [weekCompletionUnlocked]);
-
-  const handleSelectDay = (dayId) => {
-    setPlanData((prev) => ({
+  const handleDraftChange = (field, value) => {
+    setDraft((prev) => ({
       ...prev,
-      selectedDayId: dayId,
-      expandedDayId: prev.expandedDayId === dayId ? null : dayId,
+      [field]: value,
     }));
   };
 
-  const handleContinuePlan = () => {
-    setPlanData((prev) => ({
+  const handleDaysPerWeekChange = (value) => {
+    const nextDays = Number(value);
+
+    setDraft((prev) => {
+      let updatedDays = [...prev.days];
+
+      if (nextDays > updatedDays.length) {
+        const usedDays = updatedDays.map((day) => day.day);
+
+        for (const dayName of weekDays) {
+          if (updatedDays.length >= nextDays) break;
+          if (!usedDays.includes(dayName)) {
+            updatedDays.push(createDayBlock(dayName));
+          }
+        }
+      } else if (nextDays < updatedDays.length) {
+        updatedDays = updatedDays.slice(0, nextDays);
+      }
+
+      return {
+        ...prev,
+        daysPerWeek: nextDays,
+        days: updatedDays,
+      };
+    });
+  };
+
+  const handleDayChange = (dayId, field, value) => {
+    setDraft((prev) => ({
       ...prev,
-      selectedDayId: todayWorkout.id,
-      expandedDayId: todayWorkout.id,
+      days: prev.days.map((day) =>
+        day.id === dayId ? { ...day, [field]: value } : day
+      ),
     }));
   };
 
-  const handleMarkComplete = () => {
-    if (!selectedDay || selectedDay.type !== "workout" || selectedDay.completed) {
-      return;
-    }
-
-    setPlanData((prev) => ({
+  const addExerciseRow = (dayId) => {
+    setDraft((prev) => ({
       ...prev,
-      weeklySchedule: prev.weeklySchedule.map((day) =>
-        day.id === selectedDay.id
+      days: prev.days.map((day) =>
+        day.id === dayId
           ? {
               ...day,
-              completed: true,
-              missed: false,
+              exercises: [...day.exercises, createExerciseRow()],
             }
           : day
       ),
     }));
-
-    setSuccessPulse(true);
-    setTimeout(() => setSuccessPulse(false), 900);
   };
 
-  const handleReplaceWorkout = () => {
-    if (!selectedDay || selectedDay.type !== "workout") return;
-
-    setPlanData((prev) => ({
+  const removeExerciseRow = (dayId, exerciseId) => {
+    setDraft((prev) => ({
       ...prev,
-      weeklySchedule: prev.weeklySchedule.map((day) =>
-        day.id === selectedDay.id
+      days: prev.days.map((day) => {
+        if (day.id !== dayId) return day;
+        if (day.exercises.length === 1) return day;
+
+        return {
+          ...day,
+          exercises: day.exercises.filter(
+            (exercise) => exercise.id !== exerciseId
+          ),
+        };
+      }),
+    }));
+  };
+
+  const handleExerciseChange = (dayId, exerciseId, field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      days: prev.days.map((day) =>
+        day.id === dayId
           ? {
               ...day,
-              title: `${day.title} Alt`,
-              exercises: day.exercises.map((exercise, index) =>
-                index === 0 ? `${exercise} Variation` : exercise
+              exercises: day.exercises.map((exercise) =>
+                exercise.id === exerciseId
+                  ? { ...exercise, [field]: value }
+                  : exercise
               ),
             }
           : day
@@ -508,531 +248,631 @@ const Plans = () => {
     }));
   };
 
-  const handleMarkMissed = () => {
-    if (!selectedDay || selectedDay.type !== "workout" || selectedDay.completed) {
+  const validateDraft = () => {
+    if (!draft.planName.trim()) {
+      return "Please enter a plan name.";
+    }
+
+    if (!draft.days.length) {
+      return "Please add at least one workout day.";
+    }
+
+    for (const day of draft.days) {
+      if (!day.day.trim()) {
+        return "Each workout block needs a day name.";
+      }
+
+      if (!day.focus.trim()) {
+        return `Please enter focus for ${day.day}.`;
+      }
+
+      const validExercises = day.exercises.filter(
+        (exercise) =>
+          exercise.name.trim() &&
+          String(exercise.sets).trim() &&
+          String(exercise.reps).trim()
+      );
+
+      if (!validExercises.length) {
+        return `Please complete at least one exercise for ${day.day}.`;
+      }
+    }
+
+    return "";
+  };
+
+  const buildPlanPayload = () => {
+    return {
+      planName: draft.planName.trim(),
+      goal: draft.goal,
+      duration: draft.duration,
+      difficulty: draft.difficulty,
+      daysPerWeek: draft.daysPerWeek,
+      isActive: false,
+      days: draft.days.map((day) => ({
+        day: day.day,
+        focus: day.focus.trim(),
+        exercises: day.exercises
+          .filter(
+            (exercise) =>
+              exercise.name.trim() &&
+              String(exercise.sets).trim() &&
+              String(exercise.reps).trim()
+          )
+          .map((exercise) => ({
+            name: exercise.name.trim(),
+            sets: Number(exercise.sets),
+            reps: Number(exercise.reps),
+          })),
+      })),
+    };
+  };
+
+  const handleSavePlan = async () => {
+    const validationError = validateDraft();
+
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
 
-    setPlanData((prev) => ({
-      ...prev,
-      weeklySchedule: prev.weeklySchedule.map((day) =>
-        day.id === selectedDay.id
-          ? {
-              ...day,
-              missed: true,
-              completed: false,
-            }
-          : day
-      ),
-    }));
+    setSaving(true);
+    setErrorMessage("");
+
+    try {
+      const payload = buildPlanPayload();
+
+      if (editingPlanId) {
+        const existingPlan = plans.find((plan) => plan.id === editingPlanId);
+
+        await updateDoc(doc(db, "plans", editingPlanId), {
+          ...payload,
+          isActive: existingPlan?.isActive || false,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(plansRef, {
+          ...payload,
+          isActive: plans.length === 0,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      await fetchPlans();
+      closeModal();
+    } catch (error) {
+      console.error("Error saving plan:", error);
+      setErrorMessage("Failed to save plan.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <section className="page-section plans-page">
+  const handleDeletePlan = async (planId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this plan?"
+    );
+
+    if (!confirmed) return;
+
+    setErrorMessage("");
+
+    try {
+      const deletingPlan = plans.find((plan) => plan.id === planId);
+
+      await deleteDoc(doc(db, "plans", planId));
+
+      const remainingPlans = plans.filter((plan) => plan.id !== planId);
+
+      if (deletingPlan?.isActive && remainingPlans.length > 0) {
+        const latestRemainingPlan = remainingPlans[0];
+
+        await updateDoc(doc(db, "plans", latestRemainingPlan.id), {
+          isActive: true,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      await fetchPlans();
+    } catch (error) {
+      console.error("Error deleting plan:", error);
+      setErrorMessage("Failed to delete plan.");
+    }
+  };
+
+  const handleSetActive = async (targetPlanId) => {
+    setErrorMessage("");
+
+    try {
+      const updates = plans.map(async (plan) => {
+        return updateDoc(doc(db, "plans", plan.id), {
+          isActive: plan.id === targetPlanId,
+          updatedAt: serverTimestamp(),
+        });
+      });
+
+      await Promise.all(updates);
+      await fetchPlans();
+    } catch (error) {
+      console.error("Error setting active plan:", error);
+      setErrorMessage("Failed to set active plan.");
+    }
+  };
+
+  return (
+    <>
+      <section className="page-section plans-manager-page">
         <div className="plans-bg-orb plans-orb-1" />
         <div className="plans-bg-orb plans-orb-2" />
         <div className="plans-bg-grid" />
 
-        <div className="plans-shell">
-          <div className="plans-hero-card fade-up delay-1">
-            <div className="plans-hero-top">
-              <div>
-                <span className="plans-hero-tag">Plan Engine</span>
-                <h2>Loading Plan...</h2>
-                <p>Fetching your active plan from Firebase.</p>
-              </div>
-            </div>
-
-            <div className="plans-meta-grid">
-              {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="plans-meta-card">
-                  <span>Loading</span>
-                  <strong>...</strong>
-                </div>
-              ))}
-            </div>
-
-            <div className="plans-progress-block">
-              <div className="plans-progress-header">
-                <div>
-                  <h3>Please wait</h3>
-                  <p>Your plan data is being prepared.</p>
-                </div>
-              </div>
-
-              <div className="plans-progress-bar">
-                <div className="plans-progress-fill" style={{ width: "35%" }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="page-section plans-page">
-      <div className="plans-bg-orb plans-orb-1" />
-      <div className="plans-bg-orb plans-orb-2" />
-      <div className="plans-bg-grid" />
-
-      <div className="plans-shell">
-        <div className="plans-hero-card fade-up delay-1">
-          <div className="plans-hero-top">
-            <div>
-              <span className="plans-hero-tag">Plan Engine</span>
-              <h2>{activePlan.name}</h2>
+        <div className="plans-manager-shell">
+          <div className="plans-manager-hero">
+            <div className="plans-hero-copy">
+              <span className="plans-eyebrow">Plan Manager</span>
+              <h2>Build and Manage Your Workout Plans</h2>
               <p>
-                Stay locked into your weekly structure with one clear active
-                plan, one strong focus, and premium progress tracking.
+                Create day-wise plans with focus, exercises, sets, and reps.
+                Save multiple plans and choose one active plan for your app.
               </p>
             </div>
 
-            <button
-              type="button"
-              className="plans-primary-btn pulse-soft"
-              onClick={handleContinuePlan}
-            >
-              {progress === 100 ? "Plan Completed" : "Continue Plan"}
-            </button>
-          </div>
-
-          <div className="plans-meta-grid">
-            <div className="plans-meta-card">
-              <span>Goal</span>
-              <strong>{activePlan.goal}</strong>
-            </div>
-
-            <div className="plans-meta-card">
-              <span>Duration</span>
-              <strong>{activePlan.duration}</strong>
-            </div>
-
-            <div className="plans-meta-card">
-              <span>Difficulty</span>
-              <strong>{activePlan.difficulty}</strong>
-            </div>
-
-            <div className="plans-meta-card">
-              <span>Days / Week</span>
-              <strong>{activePlan.daysPerWeek} Days</strong>
-            </div>
-          </div>
-
-          <div className="plans-progress-block">
-            <div className="plans-progress-header">
-              <div>
-                <h3>Plan Progress</h3>
-                <p>
-                  Week {activePlan.currentWeek} • {completionText}
-                </p>
-              </div>
-
-              <div className="plans-progress-pill">{completionText}</div>
-            </div>
-
-            <div className="plans-progress-bar">
-              <div
-                className="plans-progress-fill"
-                style={{ width: `${activePlan.progress}%` }}
-              />
-            </div>
-
-            <div className="plans-progress-stats">
-              <div className="plans-mini-stat">
-                <span>Completed</span>
-                <strong>{activePlan.completedDays} days</strong>
-              </div>
-
-              <div className="plans-mini-stat">
-                <span>Remaining</span>
-                <strong>{activePlan.remainingDays} days</strong>
-              </div>
-
-              <div className="plans-mini-stat">
-                <span>Badge</span>
-                <strong>{activePlan.badge}</strong>
-              </div>
-            </div>
-
-            {(saving || errorMessage) && (
-              <div
-                style={{
-                  marginTop: "14px",
-                  color: errorMessage ? "#ffc1cf" : "#9df3c5",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                }}
+            <div className="plans-hero-actions">
+              <button
+                type="button"
+                className="plans-primary-btn"
+                onClick={openCreateModal}
               >
-                {errorMessage ? errorMessage : "Saving latest plan changes..."}
+                + Create New Plan
+              </button>
+            </div>
+          </div>
+
+          {errorMessage && <div className="plans-feedback error">{errorMessage}</div>}
+
+          {activePlan && (
+            <div className="active-plan-section">
+              <div className="section-header">
+                <div>
+                  <span className="section-kicker">Current Active</span>
+                  <h3>Active Plan</h3>
+                </div>
+              </div>
+
+              <div className="plan-card active-card">
+                <div className="plan-card-top">
+                  <div>
+                    <div className="plan-badge-row">
+                      <span className="status-pill active-pill">Active Plan</span>
+                      <span className="difficulty-pill">
+                        {activePlan.difficulty}
+                      </span>
+                    </div>
+                    <h4>{activePlan.planName}</h4>
+                    <p>
+                      {activePlan.goal} • {activePlan.duration} •{" "}
+                      {activePlan.daysPerWeek} days / week
+                    </p>
+                  </div>
+
+                  <div className="plan-card-actions">
+                    <button
+                      type="button"
+                      className="plans-secondary-btn"
+                      onClick={() => openEditModal(activePlan)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="plans-secondary-btn danger-btn"
+                      onClick={() => handleDeletePlan(activePlan.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                <div className="plan-days-list">
+                  {activePlan.days?.map((dayBlock, index) => (
+                    <div key={`${dayBlock.day}-${index}`} className="plan-day-card">
+                      <div className="plan-day-header">
+                        <div>
+                          <h5>{dayBlock.day}</h5>
+                          <span>{dayBlock.focus}</span>
+                        </div>
+                      </div>
+
+                      <div className="plan-exercise-list">
+                        {dayBlock.exercises?.map((exercise, exerciseIndex) => (
+                          <div
+                            key={`${exercise.name}-${exerciseIndex}`}
+                            className="plan-exercise-row"
+                          >
+                            <div className="exercise-name">{exercise.name}</div>
+                            <div className="exercise-meta">
+                              {exercise.sets} sets × {exercise.reps} reps
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="saved-plans-section">
+            <div className="section-header">
+              <div>
+                <span className="section-kicker">Stored Plans</span>
+                <h3>Saved Plans</h3>
+              </div>
+
+              <div className="plans-count-pill">
+                {loading ? "Loading..." : `${plans.length} plan${plans.length !== 1 ? "s" : ""}`}
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="empty-state-card">
+                <p>Loading saved plans...</p>
+              </div>
+            ) : sortedPlans.length === 0 ? (
+              <div className="empty-state-card">
+                <h4>No plans created yet</h4>
+                <p>Create your first day-wise workout plan to get started.</p>
+                <button
+                  type="button"
+                  className="plans-primary-btn"
+                  onClick={openCreateModal}
+                >
+                  Create First Plan
+                </button>
+              </div>
+            ) : (
+              <div className="plans-grid">
+                {sortedPlans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className={`plan-card ${plan.isActive ? "active-card subtle-active" : ""}`}
+                  >
+                    <div className="plan-card-top">
+                      <div>
+                        <div className="plan-badge-row">
+                          {plan.isActive && (
+                            <span className="status-pill active-pill">Active</span>
+                          )}
+                          <span className="difficulty-pill">{plan.difficulty}</span>
+                        </div>
+                        <h4>{plan.planName}</h4>
+                        <p>
+                          {plan.goal} • {plan.duration} • {plan.daysPerWeek} days /
+                          week
+                        </p>
+                      </div>
+
+                      <div className="plan-card-actions">
+                        <button
+                          type="button"
+                          className="plans-secondary-btn"
+                          onClick={() => openEditModal(plan)}
+                        >
+                          Edit
+                        </button>
+
+                        {!plan.isActive && (
+                          <button
+                            type="button"
+                            className="plans-secondary-btn"
+                            onClick={() => handleSetActive(plan.id)}
+                          >
+                            Set Active
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          className="plans-secondary-btn danger-btn"
+                          onClick={() => handleDeletePlan(plan.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="plan-days-list compact">
+                      {plan.days?.map((dayBlock, index) => (
+                        <div key={`${dayBlock.day}-${index}`} className="plan-day-card">
+                          <div className="plan-day-header">
+                            <div>
+                              <h5>{dayBlock.day}</h5>
+                              <span>{dayBlock.focus}</span>
+                            </div>
+                          </div>
+
+                          <div className="plan-exercise-list">
+                            {dayBlock.exercises?.map((exercise, exerciseIndex) => (
+                              <div
+                                key={`${exercise.name}-${exerciseIndex}`}
+                                className="plan-exercise-row"
+                              >
+                                <div className="exercise-name">{exercise.name}</div>
+                                <div className="exercise-meta">
+                                  {exercise.sets} × {exercise.reps}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
+      </section>
 
-        <div className="plans-main-grid">
-          <div className="plans-left-col">
-            <div className="plans-panel fade-up delay-2">
-              <div className="plans-panel-header">
-                <div>
-                  <span className="section-kicker">Today Focus</span>
-                  <h3>Today's Workout</h3>
-                </div>
+      {showModal && (
+        <div className="plan-modal-overlay" onClick={closeModal}>
+          <div
+            className="plan-modal-sheet"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="plan-modal-header">
+              <div>
+                <span className="plans-eyebrow">
+                  {editingPlanId ? "Edit Plan" : "Create Plan"}
+                </span>
+                <h3>{editingPlanId ? "Update Workout Plan" : "Create New Workout Plan"}</h3>
+                <p>
+                  Build your plan day by day. Add focus, exercises, sets, and reps.
+                </p>
+              </div>
 
-                <span
-                  className={`status-pill ${
-                    todayWorkout.status === "today" ? "today" : ""
-                  }`}
+              <button
+                type="button"
+                className="close-modal-btn"
+                onClick={closeModal}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="plan-form-grid">
+              <label className="form-field">
+                <span>Plan Name</span>
+                <input
+                  type="text"
+                  placeholder="Example: Push Pull Legs"
+                  value={draft.planName}
+                  onChange={(event) =>
+                    handleDraftChange("planName", event.target.value)
+                  }
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Goal</span>
+                <select
+                  value={draft.goal}
+                  onChange={(event) =>
+                    handleDraftChange("goal", event.target.value)
+                  }
                 >
-                  {todayWorkout.status === "today"
-                    ? "Today's Session"
-                    : todayWorkout.status === "completed"
-                    ? "Completed"
-                    : todayWorkout.status === "rest"
-                    ? "Rest Day"
-                    : todayWorkout.status === "missed"
-                    ? "Missed"
-                    : "Upcoming"}
-                </span>
-              </div>
+                  {goalOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-              <div className="today-workout-card">
-                <div className="today-workout-main">
-                  <div className="today-icon">
-                    {todayWorkout.type === "rest" ? "🌙" : "⚡"}
-                  </div>
+              <label className="form-field">
+                <span>Duration</span>
+                <select
+                  value={draft.duration}
+                  onChange={(event) =>
+                    handleDraftChange("duration", event.target.value)
+                  }
+                >
+                  {durationOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                  <div>
-                    <h4>{todayWorkout.title}</h4>
-                    <p>
-                      {todayWorkout.fullDay} • {todayWorkout.exercises.length}{" "}
-                      items
-                    </p>
-                  </div>
-                </div>
+              <label className="form-field">
+                <span>Difficulty</span>
+                <select
+                  value={draft.difficulty}
+                  onChange={(event) =>
+                    handleDraftChange("difficulty", event.target.value)
+                  }
+                >
+                  {difficultyOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                <div className="today-workout-meta">
-                  <div className="mini-info-chip">
-                    <span>Time</span>
-                    <strong>{todayWorkout.estimatedTime}</strong>
-                  </div>
-
-                  <div className="mini-info-chip">
-                    <span>Goal</span>
-                    <strong>{activePlan.goal}</strong>
-                  </div>
-
-                  <div className="mini-info-chip">
-                    <span>Level</span>
-                    <strong>{activePlan.difficulty}</strong>
-                  </div>
-                </div>
-
-                <div className="today-workout-actions">
-                  <button
-                    type="button"
-                    className="plans-primary-btn"
-                    onClick={handleContinuePlan}
-                  >
-                    {todayWorkout.type === "rest" ? "View Day" : "Start Workout"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="plans-secondary-btn"
-                    onClick={() =>
-                      setPlanData((prev) => ({
-                        ...prev,
-                        selectedDayId: todayWorkout.id,
-                        expandedDayId: todayWorkout.id,
-                      }))
-                    }
-                  >
-                    View Details
-                  </button>
-                </div>
-              </div>
+              <label className="form-field">
+                <span>Workout Days Per Week</span>
+                <select
+                  value={draft.daysPerWeek}
+                  onChange={(event) => handleDaysPerWeekChange(event.target.value)}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map((count) => (
+                    <option key={count} value={count}>
+                      {count} day{count !== 1 ? "s" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
-            <div className="plans-panel fade-up delay-3">
-              <div className="plans-panel-header">
-                <div>
-                  <span className="section-kicker">Week View</span>
-                  <h3>Weekly Schedule</h3>
-                </div>
+            <div className="day-builder-list">
+              {draft.days.map((dayBlock) => (
+                <div key={dayBlock.id} className="day-builder-card">
+                  <div className="day-builder-header">
+                    <div>
+                      <span className="section-kicker">Workout Day</span>
+                      <h4>{dayBlock.day}</h4>
+                    </div>
+                  </div>
 
-                <span className="panel-hint">
-                  Tap a day to expand workout details
-                </span>
-              </div>
+                  <div className="day-builder-grid">
+                    <label className="form-field">
+                      <span>Day</span>
+                      <select
+                        value={dayBlock.day}
+                        onChange={(event) =>
+                          handleDayChange(dayBlock.id, "day", event.target.value)
+                        }
+                      >
+                        {weekDays.map((dayName) => (
+                          <option key={dayName} value={dayName}>
+                            {dayName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-              <div className="weekly-schedule-grid">
-                {derivedSchedule.map((day) => (
-                  <button
-                    key={day.id}
-                    type="button"
-                    className={`week-day-card ${
-                      selectedDayId === day.id ? "selected" : ""
-                    } ${day.status}`}
-                    onClick={() => handleSelectDay(day.id)}
-                  >
-                    <span className="week-day-label">{day.day}</span>
-                    <strong>{day.title}</strong>
-                    <small>{day.estimatedTime}</small>
-                  </button>
-                ))}
-              </div>
+                    <label className="form-field">
+                      <span>Focus</span>
+                      <input
+                        type="text"
+                        placeholder="Example: Chest"
+                        value={dayBlock.focus}
+                        onChange={(event) =>
+                          handleDayChange(dayBlock.id, "focus", event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
 
-              {derivedSchedule.map((day) => {
-                const isOpen = expandedDayId === day.id;
-                const isSelected = selectedDayId === day.id;
+                  <div className="exercise-builder-list">
+                    {dayBlock.exercises.map((exercise, index) => (
+                      <div key={exercise.id} className="exercise-builder-row">
+                        <div className="exercise-row-top">
+                          <span className="exercise-counter">
+                            Exercise {index + 1}
+                          </span>
 
-                return (
-                  <div
-                    key={day.id}
-                    className={`day-accordion ${isOpen ? "open" : ""} ${
-                      isSelected ? "active" : ""
-                    }`}
-                  >
-                    <div className="day-accordion-inner">
-                      <div className="day-details-card">
-                        <div className="day-details-top">
-                          <div>
-                            <span className="section-kicker">Workout Details</span>
-                            <h4>
-                              {day.fullDay} • {day.title}
-                            </h4>
-                          </div>
-
-                          <div className={`status-pill detail-status ${day.status}`}>
-                            {day.status === "completed" && "Completed"}
-                            {day.status === "today" && "Today"}
-                            {day.status === "upcoming" && "Upcoming"}
-                            {day.status === "missed" && "Missed"}
-                            {day.status === "rest" && "Rest Day"}
-                          </div>
+                          <button
+                            type="button"
+                            className="remove-exercise-btn"
+                            onClick={() =>
+                              removeExerciseRow(dayBlock.id, exercise.id)
+                            }
+                          >
+                            Remove
+                          </button>
                         </div>
 
-                        <div className="day-details-meta">
-                          <div className="detail-chip">
-                            <span>Estimated Time</span>
-                            <strong>{day.estimatedTime}</strong>
-                          </div>
+                        <div className="exercise-builder-grid">
+                          <label className="form-field">
+                            <span>Exercise Name</span>
+                            <input
+                              type="text"
+                              placeholder="Example: Push-ups"
+                              value={exercise.name}
+                              onChange={(event) =>
+                                handleExerciseChange(
+                                  dayBlock.id,
+                                  exercise.id,
+                                  "name",
+                                  event.target.value
+                                )
+                              }
+                            />
+                          </label>
 
-                          <div className="detail-chip">
-                            <span>Exercises</span>
-                            <strong>{day.exercises.length}</strong>
-                          </div>
+                          <label className="form-field">
+                            <span>Sets</span>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="3"
+                              value={exercise.sets}
+                              onChange={(event) =>
+                                handleExerciseChange(
+                                  dayBlock.id,
+                                  exercise.id,
+                                  "sets",
+                                  event.target.value
+                                )
+                              }
+                            />
+                          </label>
 
-                          <div className="detail-chip">
-                            <span>Plan Track</span>
-                            <strong>{activePlan.name}</strong>
-                          </div>
-                        </div>
-
-                        <div className="exercise-list">
-                          {day.exercises.map((exercise) => (
-                            <div key={exercise} className="exercise-row">
-                              <span className="exercise-dot" />
-                              <p>{exercise}</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="day-details-actions">
-                          {day.type === "workout" && (
-                            <>
-                              <button
-                                type="button"
-                                className={`plans-primary-btn success-btn ${
-                                  successPulse && selectedDayId === day.id
-                                    ? "completed-pulse"
-                                    : ""
-                                }`}
-                                onClick={handleMarkComplete}
-                                disabled={day.completed}
-                              >
-                                {day.completed ? "Completed" : "Mark as Complete"}
-                              </button>
-
-                              <button
-                                type="button"
-                                className="plans-secondary-btn"
-                                onClick={handleReplaceWorkout}
-                              >
-                                Replace Workout
-                              </button>
-
-                              {!day.completed && (
-                                <button
-                                  type="button"
-                                  className="plans-secondary-btn danger-btn"
-                                  onClick={handleMarkMissed}
-                                >
-                                  Mark Missed
-                                </button>
-                              )}
-                            </>
-                          )}
-
-                          {day.type === "rest" && (
-                            <button type="button" className="plans-secondary-btn">
-                              Recovery Day
-                            </button>
-                          )}
+                          <label className="form-field">
+                            <span>Reps</span>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="12"
+                              value={exercise.reps}
+                              onChange={(event) =>
+                                handleExerciseChange(
+                                  dayBlock.id,
+                                  exercise.id,
+                                  "reps",
+                                  event.target.value
+                                )
+                              }
+                            />
+                          </label>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                    ))}
 
-          <div className="plans-right-col">
-            <div className="plans-panel fade-up delay-2">
-              <div className="plans-panel-header">
-                <div>
-                  <span className="section-kicker">Progress</span>
-                  <h3>Completion Summary</h3>
-                </div>
-              </div>
-
-              <div className="summary-stack">
-                <div className="summary-card highlight">
-                  <span>Plan Completion</span>
-                  <strong>{activePlan.progress}%</strong>
-                  <p>You're building strong momentum this cycle.</p>
-                </div>
-
-                <div className="summary-card">
-                  <span>Completed vs Remaining</span>
-                  <strong>
-                    {activePlan.completedDays} / {activePlan.remainingDays}
-                  </strong>
-                  <p>Track finished and pending workout days clearly.</p>
-                </div>
-
-                <div className="summary-card">
-                  <span>Workout Time</span>
-                  <strong>{activePlan.estimatedWorkoutTime} min avg</strong>
-                  <p>Balanced duration for consistency and recovery.</p>
-                </div>
-
-                <div className="summary-card">
-                  <span>Missed Workouts</span>
-                  <strong>{missedDays} day{missedDays !== 1 ? "s" : ""}</strong>
-                  <p>Missed days stay visible so the schedule stays honest.</p>
-                </div>
-
-                <div className="summary-card">
-                  <span>Next Reward</span>
-                  <strong>{activePlan.reward}</strong>
-                  <p>Finish this week to unlock your premium badge.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="plans-panel fade-up delay-3">
-              <div className="plans-panel-header">
-                <div>
-                  <span className="section-kicker">Suggestions</span>
-                  <h3>Recommended Plans</h3>
-                </div>
-              </div>
-
-              <div className="recommended-plans-list">
-                {recommendedPlansData.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className={`recommended-plan-card ${plan.accent}`}
-                  >
-                    <div className="recommended-top">
-                      <div>
-                        <h4>{plan.name}</h4>
-                        <p>{plan.goal}</p>
-                      </div>
-
-                      <span className="difficulty-tag">{plan.difficulty}</span>
-                    </div>
-
-                    <div className="recommended-meta">
-                      <span>{plan.duration}</span>
-                      <span>{plan.daysPerWeek} Days / Week</span>
-                      <span>{plan.time}</span>
-                    </div>
-
-                    <button type="button" className="plans-secondary-btn full-btn">
-                      View Plan
+                    <button
+                      type="button"
+                      className="plans-secondary-btn add-exercise-btn"
+                      onClick={() => addExerciseRow(dayBlock.id)}
+                    >
+                      + Add Exercise
                     </button>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
 
-            <div className="plans-panel fade-up delay-4">
-              <div className="plans-panel-header">
-                <div>
-                  <span className="section-kicker">Achievements</span>
-                  <h3>Weekly Rewards</h3>
-                </div>
-              </div>
+            <div className="plan-modal-actions">
+              <button
+                type="button"
+                className="plans-secondary-btn"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
 
-              <div className={`achievement-card ${weekBadgePop ? "badge-burst" : ""}`}>
-                <div className="achievement-badge">🏆</div>
-                <div>
-                  <h4>{activePlan.badge}</h4>
-                  <p>
-                    {weekCompletionUnlocked
-                      ? "Full week completed. Premium reward unlocked."
-                      : "Keep your rhythm strong and unlock your end-plan reward."}
-                  </p>
-                </div>
-              </div>
-
-              <div className="achievement-list">
-                <div
-                  className={`achievement-row ${
-                    completedDays >= 2 ? "unlocked" : "active"
-                  }`}
-                >
-                  <div className="achievement-state-dot" />
-                  <div>
-                    <h5>Momentum Builder</h5>
-                    <p>Complete 2 workout days to build early momentum.</p>
-                  </div>
-                </div>
-
-                <div
-                  className={`achievement-row ${
-                    completedDays >= 4 ? "unlocked" : "active"
-                  }`}
-                >
-                  <div className="achievement-state-dot" />
-                  <div>
-                    <h5>Week Warrior</h5>
-                    <p>Finish 4 workout days to earn your weekly badge.</p>
-                  </div>
-                </div>
-
-                <div
-                  className={`achievement-row ${
-                    progress === 100 ? "unlocked" : "locked"
-                  }`}
-                >
-                  <div className="achievement-state-dot" />
-                  <div>
-                    <h5>Plan Finisher</h5>
-                    <p>Complete the full plan cycle to unlock your final reward.</p>
-                  </div>
-                </div>
-              </div>
+              <button
+                type="button"
+                className="plans-primary-btn"
+                onClick={handleSavePlan}
+                disabled={saving}
+              >
+                {saving
+                  ? "Saving..."
+                  : editingPlanId
+                  ? "Update Plan"
+                  : "Save Plan"}
+              </button>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      )}
+    </>
   );
 };
 

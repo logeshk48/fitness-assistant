@@ -1,11 +1,11 @@
-.plans-page {
+.plans-manager-page {
   position: relative;
   min-height: 100%;
   overflow: hidden;
   padding-bottom: 40px;
 }
 
-.plans-shell {
+.plans-manager-shell {
   position: relative;
   z-index: 2;
   display: flex;
@@ -50,22 +50,19 @@
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
 }
 
-.plans-hero-card,
-.plans-panel,
-.week-day-card,
-.day-details-card,
-.recommended-plan-card,
-.summary-card,
-.achievement-card,
-.achievement-row {
+.plans-manager-hero,
+.plan-card,
+.empty-state-card,
+.plan-modal-sheet,
+.day-builder-card {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
 
-.plans-hero-card,
-.plans-panel {
-  position: relative;
-  overflow: hidden;
+.plans-manager-hero,
+.plan-card,
+.empty-state-card,
+.plan-modal-sheet {
   border: 1px solid rgba(130, 170, 255, 0.14);
   background: linear-gradient(
     180deg,
@@ -75,26 +72,23 @@
   box-shadow:
     0 18px 60px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.plans-manager-hero,
+.plan-card,
+.empty-state-card {
   border-radius: 28px;
 }
 
-.plans-hero-card {
-  padding: 28px;
-}
-
-.plans-panel {
-  padding: 22px;
-}
-
-.plans-hero-top {
+.plans-manager-hero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  margin-bottom: 24px;
+  padding: 28px;
 }
 
-.plans-hero-tag,
+.plans-eyebrow,
 .section-kicker {
   display: inline-flex;
   align-items: center;
@@ -110,37 +104,44 @@
   text-transform: uppercase;
 }
 
-.plans-hero-card h2,
-.plans-panel h3,
-.day-details-card h4,
-.recommended-plan-card h4,
-.achievement-card h4 {
+.plans-hero-copy h2,
+.section-header h3,
+.plan-card h4,
+.plan-day-card h5,
+.plan-modal-header h3,
+.day-builder-card h4 {
   margin: 0;
   color: #f6f8ff;
 }
 
-.plans-hero-card h2 {
+.plans-hero-copy h2 {
   font-size: 32px;
   line-height: 1.1;
   margin-bottom: 10px;
 }
 
-.plans-hero-card p,
-.plans-panel-header p,
-.panel-hint,
-.today-workout-card p,
-.day-details-card p,
-.summary-card p,
-.recommended-plan-card p,
-.achievement-card p,
-.achievement-row p {
+.plans-hero-copy p,
+.section-header p,
+.plan-card p,
+.plan-modal-header p,
+.empty-state-card p {
   margin: 0;
   color: rgba(214, 225, 255, 0.72);
   line-height: 1.6;
 }
 
+.plans-hero-actions,
+.plan-card-actions,
+.plan-modal-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .plans-primary-btn,
-.plans-secondary-btn {
+.plans-secondary-btn,
+.close-modal-btn,
+.remove-exercise-btn {
   border: none;
   outline: none;
   cursor: pointer;
@@ -152,7 +153,13 @@
     opacity 0.2s ease;
   font-weight: 700;
   border-radius: 16px;
-  white-space: nowrap;
+}
+
+.plans-primary-btn:hover,
+.plans-secondary-btn:hover,
+.close-modal-btn:hover,
+.remove-exercise-btn:hover {
+  transform: translateY(-2px);
 }
 
 .plans-primary-btn {
@@ -162,18 +169,6 @@
   box-shadow: 0 12px 26px rgba(43, 117, 255, 0.32);
 }
 
-.plans-primary-btn:hover,
-.plans-secondary-btn:hover,
-.week-day-card:hover {
-  transform: translateY(-2px);
-}
-
-.plans-primary-btn:disabled {
-  opacity: 0.72;
-  cursor: not-allowed;
-  transform: none;
-}
-
 .plans-secondary-btn {
   padding: 13px 16px;
   color: #dbe7ff;
@@ -181,84 +176,47 @@
   border: 1px solid rgba(150, 178, 255, 0.16);
 }
 
-.danger-btn {
-  border: 1px solid rgba(255, 126, 150, 0.2);
+.plans-primary-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.danger-btn,
+.remove-exercise-btn {
   color: #ffd2dc;
   background: rgba(255, 101, 131, 0.08);
+  border: 1px solid rgba(255, 126, 150, 0.2);
 }
 
-.full-btn {
-  width: 100%;
+.plans-feedback {
+  padding: 14px 16px;
+  border-radius: 18px;
+  font-weight: 600;
 }
 
-.plans-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 22px;
+.plans-feedback.error {
+  background: rgba(255, 101, 131, 0.08);
+  border: 1px solid rgba(255, 126, 150, 0.2);
+  color: #ffd2dc;
 }
 
-.plans-meta-card,
-.plans-mini-stat,
-.mini-info-chip,
-.detail-chip {
-  border-radius: 20px;
-  border: 1px solid rgba(145, 178, 255, 0.12);
-  background: rgba(255, 255, 255, 0.035);
-  padding: 16px;
-}
-
-.plans-meta-card span,
-.plans-mini-stat span,
-.mini-info-chip span,
-.detail-chip span,
-.summary-card span {
-  display: block;
-  color: rgba(182, 202, 255, 0.7);
-  font-size: 12px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-
-.plans-meta-card strong,
-.plans-mini-stat strong,
-.mini-info-chip strong,
-.detail-chip strong,
-.summary-card strong {
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.plans-progress-block {
-  border-radius: 24px;
-  border: 1px solid rgba(144, 177, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 20px;
-}
-
-.plans-progress-header,
-.plans-panel-header,
-.today-workout-main,
-.day-details-top,
-.recommended-top,
-.achievement-card {
+.active-plan-section,
+.saved-plans-section {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
 }
 
-.plans-progress-header h3,
-.plans-panel-header h3 {
-  font-size: 20px;
-  margin-bottom: 6px;
-}
-
-.plans-progress-pill,
+.plans-count-pill,
 .status-pill,
-.difficulty-tag {
+.difficulty-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -272,604 +230,341 @@
   color: #cfe0ff;
 }
 
-.status-pill.today {
-  background: rgba(58, 142, 255, 0.14);
-  color: #b9d8ff;
+.active-pill {
+  background: rgba(41, 160, 110, 0.14);
+  color: #9df3c5;
+  border-color: rgba(80, 200, 140, 0.18);
 }
 
-.plans-progress-bar {
-  width: 100%;
-  height: 12px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  margin: 18px 0;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
-}
-
-.plans-progress-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #4f7dff, #25d2ff);
-  box-shadow: 0 0 18px rgba(53, 160, 255, 0.45);
-  transition: width 0.8s ease;
-}
-
-.plans-progress-stats,
-.today-workout-meta,
-.day-details-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.plans-main-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
-  gap: 24px;
-}
-
-.plans-left-col,
-.plans-right-col,
-.summary-stack,
-.recommended-plans-list,
-.achievement-list {
+.plan-badge-row {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
 
-.today-workout-card {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.today-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  display: grid;
-  place-items: center;
-  font-size: 26px;
-  background: linear-gradient(
-    135deg,
-    rgba(79, 125, 255, 0.22),
-    rgba(35, 199, 255, 0.18)
-  );
-  border: 1px solid rgba(121, 168, 255, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.today-workout-main h4,
-.recommended-plan-card h4,
-.achievement-row h5 {
-  font-size: 20px;
-  margin: 0 0 6px;
-  color: #ffffff;
-}
-
-.today-workout-actions,
-.day-details-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.weekly-schedule-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.week-day-card {
-  text-align: left;
-  border: 1px solid rgba(145, 179, 255, 0.12);
-  background: rgba(255, 255, 255, 0.035);
-  color: #eef3ff;
-  border-radius: 20px;
-  padding: 14px 12px;
-  min-height: 118px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 10px;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
-}
-
-.week-day-card.selected {
-  border-color: rgba(87, 155, 255, 0.46);
-  background: linear-gradient(
-    180deg,
-    rgba(76, 121, 255, 0.16),
-    rgba(255, 255, 255, 0.05)
-  );
-  box-shadow: 0 16px 34px rgba(40, 96, 255, 0.18);
-}
-
-.week-day-card.today {
-  box-shadow: 0 0 0 1px rgba(68, 207, 255, 0.18);
-}
-
-.week-day-card.completed {
-  background: linear-gradient(
-    180deg,
-    rgba(29, 164, 109, 0.13),
-    rgba(255, 255, 255, 0.04)
-  );
-}
-
-.week-day-card.missed {
-  background: linear-gradient(
-    180deg,
-    rgba(196, 76, 105, 0.14),
-    rgba(255, 255, 255, 0.04)
-  );
-}
-
-.week-day-card.rest {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.03),
-    rgba(255, 255, 255, 0.025)
-  );
-}
-
-.week-day-label {
-  font-size: 12px;
-  color: #9fbfff;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.week-day-card strong {
-  font-size: 14px;
-  line-height: 1.4;
-  font-weight: 700;
-}
-
-.week-day-card small {
-  color: rgba(206, 220, 255, 0.6);
-  font-size: 12px;
-}
-
-.day-accordion {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.32s ease, opacity 0.28s ease;
-  opacity: 0;
-  margin-bottom: 0;
-}
-
-.day-accordion.open {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  margin-bottom: 14px;
-}
-
-.day-accordion-inner {
+.plan-card {
+  padding: 22px;
   overflow: hidden;
 }
 
-.day-accordion.active .day-details-card {
-  border-color: rgba(97, 154, 255, 0.24);
-  box-shadow: 0 14px 32px rgba(38, 92, 255, 0.12);
+.active-card {
+  border-color: rgba(94, 160, 255, 0.24);
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(86, 153, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.day-details-card {
+.subtle-active {
+  position: relative;
+}
+
+.subtle-active::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #4f7dff, #23c7ff);
+}
+
+.plan-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.plan-card h4 {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.plan-days-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.plan-days-list.compact {
+  grid-template-columns: 1fr;
+}
+
+.plan-day-card,
+.day-builder-card {
   border: 1px solid rgba(145, 179, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 24px;
-  padding: 20px;
-  transition: all 0.28s ease;
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 22px;
+  padding: 16px;
 }
 
-.detail-status.completed {
-  background: rgba(41, 160, 110, 0.15);
-  color: #9df3c5;
+.plan-day-header {
+  margin-bottom: 12px;
 }
 
-.detail-status.today {
-  background: rgba(54, 145, 255, 0.15);
-  color: #b9d8ff;
+.plan-day-card h5 {
+  font-size: 18px;
+  margin-bottom: 4px;
 }
 
-.detail-status.upcoming {
-  background: rgba(118, 102, 255, 0.15);
-  color: #d0c9ff;
+.plan-day-card span {
+  color: rgba(192, 210, 255, 0.72);
+  font-size: 14px;
 }
 
-.detail-status.missed {
-  background: rgba(255, 97, 128, 0.15);
-  color: #ffc1cf;
-}
-
-.detail-status.rest {
-  background: rgba(255, 255, 255, 0.08);
-  color: #dbe7ff;
-}
-
-.exercise-list {
-  margin: 18px 0 20px;
+.plan-exercise-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.exercise-row {
+.plan-exercise-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 10px;
   padding: 12px 14px;
   border-radius: 16px;
   border: 1px solid rgba(148, 179, 255, 0.1);
   background: rgba(255, 255, 255, 0.03);
 }
 
-.exercise-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #4f7dff, #23c7ff);
-  box-shadow: 0 0 12px rgba(66, 157, 255, 0.5);
-  flex-shrink: 0;
-}
-
-.exercise-row p {
+.exercise-name {
   color: #edf3ff;
-  font-weight: 500;
-}
-
-.summary-card {
-  border-radius: 22px;
-  border: 1px solid rgba(145, 178, 255, 0.12);
-  background: rgba(255, 255, 255, 0.035);
-  padding: 18px;
-}
-
-.summary-card.highlight {
-  background: linear-gradient(
-    180deg,
-    rgba(75, 123, 255, 0.16),
-    rgba(255, 255, 255, 0.045)
-  );
-  border-color: rgba(94, 160, 255, 0.22);
-  box-shadow: 0 18px 34px rgba(41, 88, 255, 0.16);
-}
-
-.summary-card strong {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 22px;
-}
-
-.recommended-plan-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: 24px;
-  border: 1px solid rgba(145, 179, 255, 0.12);
-  background: rgba(255, 255, 255, 0.035);
-  padding: 18px;
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
-}
-
-.recommended-plan-card:hover {
-  transform: translateY(-3px) scale(1.01);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26);
-}
-
-.recommended-plan-card.soft::before,
-.recommended-plan-card.strong::before,
-.recommended-plan-card.electric::before {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 3px;
-}
-
-.recommended-plan-card.soft::before {
-  background: linear-gradient(90deg, #70a5ff, #89d9ff);
-}
-
-.recommended-plan-card.strong::before {
-  background: linear-gradient(90deg, #8f79ff, #5c8fff);
-}
-
-.recommended-plan-card.electric::before {
-  background: linear-gradient(90deg, #35b4ff, #1fe0c6);
-}
-
-.recommended-top {
-  margin-bottom: 12px;
-}
-
-.recommended-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.recommended-meta span {
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(152, 182, 255, 0.12);
-  color: #dbe7ff;
-  font-size: 12px;
   font-weight: 600;
 }
 
-.achievement-card {
-  align-items: center;
-  justify-content: flex-start;
-  gap: 14px;
+.exercise-meta {
+  color: rgba(206, 220, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.empty-state-card {
+  padding: 28px;
+  text-align: center;
+}
+
+.empty-state-card h4 {
+  margin: 0 0 10px;
+  color: #f6f8ff;
+  font-size: 22px;
+}
+
+.empty-state-card .plans-primary-btn {
+  margin-top: 16px;
+}
+
+.plan-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(3, 8, 22, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: 18px;
-  border-radius: 22px;
-  border: 1px solid rgba(154, 184, 255, 0.12);
-  background: linear-gradient(
-    180deg,
-    rgba(84, 124, 255, 0.14),
-    rgba(255, 255, 255, 0.04)
-  );
+  overflow-y: auto;
 }
 
-.badge-burst {
-  animation: badgeBurst 0.95s ease;
+.plan-modal-sheet {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  border-radius: 30px;
+  padding: 24px;
 }
 
-.achievement-badge {
-  width: 58px;
-  height: 58px;
-  border-radius: 18px;
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(156, 184, 255, 0.14);
-  animation: badgePop 0.8s ease;
-}
-
-.achievement-row {
+.plan-modal-header {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid rgba(145, 178, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-.achievement-row.unlocked {
-  background: linear-gradient(
-    180deg,
-    rgba(36, 168, 115, 0.14),
-    rgba(255, 255, 255, 0.03)
-  );
-}
-
-.achievement-row.active {
-  background: linear-gradient(
-    180deg,
-    rgba(82, 126, 255, 0.14),
-    rgba(255, 255, 255, 0.03)
-  );
-}
-
-.achievement-row.locked {
-  opacity: 0.72;
-}
-
-.achievement-state-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  margin-top: 6px;
-  background: linear-gradient(135deg, #4f7dff, #23c7ff);
-  box-shadow: 0 0 10px rgba(72, 161, 255, 0.4);
+.close-modal-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(154, 184, 255, 0.14);
+  color: #eef3ff;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
-.pulse-soft {
-  animation: pulseSoft 2.2s ease-in-out infinite;
+.plan-form-grid,
+.day-builder-grid,
+.exercise-builder-grid {
+  display: grid;
+  gap: 14px;
 }
 
-.completed-pulse {
-  animation: completePulse 0.75s ease;
+.plan-form-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 24px;
 }
 
-.fade-up {
-  opacity: 0;
-  transform: translateY(18px);
-  animation: fadeUp 0.55s ease forwards;
+.day-builder-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 16px;
 }
 
-.delay-1 {
-  animation-delay: 0.03s;
+.exercise-builder-grid {
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(110px, 1fr));
 }
 
-.delay-2 {
-  animation-delay: 0.09s;
+.form-field {
+  display: flex;
+  flex-direction: column;
 }
 
-.delay-3 {
-  animation-delay: 0.16s;
+.form-field span {
+  display: block;
+  color: rgba(182, 202, 255, 0.7);
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 
-.delay-4 {
-  animation-delay: 0.23s;
+.form-field input,
+.form-field select {
+  width: 100%;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(145, 178, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: #eef3ff;
+  font-size: 14px;
+  font-family: inherit;
 }
 
-.success-btn:active,
-.plans-primary-btn:active,
-.plans-secondary-btn:active,
-.week-day-card:active {
-  transform: scale(0.98);
+.form-field input::placeholder {
+  color: rgba(214, 225, 255, 0.45);
 }
 
-@keyframes fadeUp {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.form-field input:focus,
+.form-field select:focus {
+  border-color: rgba(97, 154, 255, 0.42);
+  box-shadow: 0 0 0 3px rgba(79, 125, 255, 0.1);
 }
 
-@keyframes pulseSoft {
-  0%,
-  100% {
-    box-shadow: 0 12px 26px rgba(43, 117, 255, 0.32);
-  }
-  50% {
-    box-shadow: 0 14px 30px rgba(35, 199, 255, 0.4);
-  }
+.day-builder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 20px;
 }
 
-@keyframes badgePop {
-  0% {
-    transform: scale(0.82);
-    opacity: 0.5;
-  }
-  65% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-  }
+.day-builder-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
-@keyframes completePulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 12px 26px rgba(43, 117, 255, 0.32);
-  }
-  50% {
-    transform: scale(1.03);
-    box-shadow: 0 16px 36px rgba(36, 188, 135, 0.42);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 12px 26px rgba(43, 117, 255, 0.32);
-  }
+.exercise-builder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-@keyframes badgeBurst {
-  0% {
-    transform: scale(1);
-  }
-  45% {
-    transform: scale(1.03);
-  }
-  100% {
-    transform: scale(1);
-  }
+.exercise-builder-row {
+  border: 1px solid rgba(148, 179, 255, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 18px;
+  padding: 14px;
 }
 
-@media (max-width: 1180px) {
-  .plans-main-grid {
+.exercise-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.exercise-counter {
+  color: #dbe7ff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.add-exercise-btn {
+  align-self: flex-start;
+}
+
+.plan-modal-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 1100px) {
+  .plans-grid,
+  .plan-days-list,
+  .plan-form-grid {
     grid-template-columns: 1fr;
   }
 
-  .plans-right-col {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
-    align-items: start;
-  }
-
-  .plans-right-col > .plans-panel {
-    height: 100%;
+  .exercise-builder-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 980px) {
-  .plans-meta-grid,
-  .plans-progress-stats,
-  .today-workout-meta,
-  .day-details-meta,
-  .plans-right-col {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .weekly-schedule-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .plans-hero-top,
-  .plans-progress-header,
-  .plans-panel-header,
-  .day-details-top,
-  .recommended-top {
+@media (max-width: 820px) {
+  .plans-manager-hero,
+  .section-header,
+  .plan-card-top,
+  .plan-modal-header,
+  .day-builder-header,
+  .exercise-row-top {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .day-builder-grid {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 680px) {
-  .plans-hero-card,
-  .plans-panel,
-  .day-details-card {
+  .plans-manager-hero,
+  .plan-card,
+  .empty-state-card,
+  .plan-modal-sheet {
     padding: 18px;
     border-radius: 22px;
   }
 
-  .plans-hero-card h2 {
+  .plans-hero-copy h2 {
     font-size: 26px;
   }
 
-  .plans-meta-grid,
-  .plans-progress-stats,
-  .today-workout-meta,
-  .day-details-meta,
-  .plans-right-col,
-  .weekly-schedule-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .today-workout-actions,
-  .day-details-actions {
+  .plans-hero-actions,
+  .plan-card-actions,
+  .plan-modal-actions {
+    width: 100%;
     flex-direction: column;
   }
 
   .plans-primary-btn,
-  .plans-secondary-btn,
-  .full-btn {
+  .plans-secondary-btn {
     width: 100%;
   }
 
-  .today-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 22px;
+  .plan-modal-overlay {
+    padding: 0;
   }
 
-  .week-day-card {
-    min-height: 100px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fade-up,
-  .pulse-soft,
-  .achievement-badge,
-  .plans-progress-fill,
-  .plans-primary-btn,
-  .plans-secondary-btn,
-  .week-day-card,
-  .recommended-plan-card,
-  .day-accordion,
-  .completed-pulse,
-  .badge-burst {
-    animation: none !important;
-    transition: none !important;
+  .plan-modal-sheet {
+    border-radius: 0;
+    min-height: 100vh;
   }
 }
