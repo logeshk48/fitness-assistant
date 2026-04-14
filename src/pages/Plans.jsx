@@ -1,6 +1,7 @@
 import "./Plans.css";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
+import { exercises, muscleGroups } from "../data/exercises";
 import {
   addDoc,
   collection,
@@ -43,10 +44,10 @@ const createExerciseRow = () => ({
   reps: "",
 });
 
-const createDayBlock = (dayName = "Monday") => ({
+const createDayBlock = (dayName = "Monday", focus = muscleGroups[0] || "Chest") => ({
   id: Date.now() + Math.random(),
   day: dayName,
-  focus: "",
+  focus,
   exercises: [createExerciseRow()],
 });
 
@@ -57,10 +58,10 @@ const createPlanDraft = () => ({
   difficulty: "Beginner",
   daysPerWeek: 4,
   days: [
-    createDayBlock("Monday"),
-    createDayBlock("Tuesday"),
-    createDayBlock("Thursday"),
-    createDayBlock("Saturday"),
+    createDayBlock("Monday", muscleGroups[0] || "Chest"),
+    createDayBlock("Tuesday", muscleGroups[1] || muscleGroups[0] || "Back"),
+    createDayBlock("Thursday", muscleGroups[7] || muscleGroups[0] || "Legs"),
+    createDayBlock("Saturday", muscleGroups[2] || muscleGroups[0] || "Shoulders"),
   ],
 });
 
@@ -69,7 +70,7 @@ const sanitizeDays = (days) => {
     ...day,
     id: day.id || Date.now() + dayIndex,
     day: day.day || weekDays[dayIndex] || "Monday",
-    focus: day.focus || "",
+    focus: day.focus || muscleGroups[0] || "Chest",
     exercises:
       Array.isArray(day.exercises) && day.exercises.length > 0
         ? day.exercises.map((exercise, exerciseIndex) => ({
@@ -80,6 +81,12 @@ const sanitizeDays = (days) => {
           }))
         : [createExerciseRow()],
   }));
+};
+
+const getExerciseOptionsByFocus = (focus) => {
+  const filtered = exercises.filter((item) => item.muscleGroup === focus);
+  const uniqueNames = [...new Set(filtered.map((item) => item.name))];
+  return uniqueNames.sort((a, b) => a.localeCompare(b));
 };
 
 const Plans = () => {
@@ -175,7 +182,9 @@ const Plans = () => {
         for (const dayName of weekDays) {
           if (updatedDays.length >= nextDays) break;
           if (!usedDays.includes(dayName)) {
-            updatedDays.push(createDayBlock(dayName));
+            updatedDays.push(
+              createDayBlock(dayName, muscleGroups[updatedDays.length % muscleGroups.length] || muscleGroups[0] || "Chest")
+            );
           }
         }
       } else if (nextDays < updatedDays.length) {
@@ -193,9 +202,25 @@ const Plans = () => {
   const handleDayChange = (dayId, field, value) => {
     setDraft((prev) => ({
       ...prev,
-      days: prev.days.map((day) =>
-        day.id === dayId ? { ...day, [field]: value } : day
-      ),
+      days: prev.days.map((day) => {
+        if (day.id !== dayId) return day;
+
+        if (field === "focus") {
+          return {
+            ...day,
+            focus: value,
+            exercises: day.exercises.map((exercise) => ({
+              ...exercise,
+              name: "",
+            })),
+          };
+        }
+
+        return {
+          ...day,
+          [field]: value,
+        };
+      }),
     }));
   };
 
@@ -257,13 +282,20 @@ const Plans = () => {
       return "Please add at least one workout day.";
     }
 
+    const selectedDays = draft.days.map((day) => day.day);
+    const hasDuplicateDays = new Set(selectedDays).size !== selectedDays.length;
+
+    if (hasDuplicateDays) {
+      return "Please choose unique days for each workout block.";
+    }
+
     for (const day of draft.days) {
       if (!day.day.trim()) {
         return "Each workout block needs a day name.";
       }
 
       if (!day.focus.trim()) {
-        return `Please enter focus for ${day.day}.`;
+        return `Please select focus for ${day.day}.`;
       }
 
       const validExercises = day.exercises.filter(
@@ -291,7 +323,7 @@ const Plans = () => {
       isActive: false,
       days: draft.days.map((day) => ({
         day: day.day,
-        focus: day.focus.trim(),
+        focus: day.focus,
         exercises: day.exercises
           .filter(
             (exercise) =>
@@ -630,7 +662,7 @@ const Plans = () => {
                 </span>
                 <h3>{editingPlanId ? "Update Workout Plan" : "Create New Workout Plan"}</h3>
                 <p>
-                  Build your plan day by day. Add focus, exercises, sets, and reps.
+                  Build your plan day by day. Select focus, exercises, sets, and reps.
                 </p>
               </div>
 
@@ -720,131 +752,144 @@ const Plans = () => {
             </div>
 
             <div className="day-builder-list">
-              {draft.days.map((dayBlock) => (
-                <div key={dayBlock.id} className="day-builder-card">
-                  <div className="day-builder-header">
-                    <div>
-                      <span className="section-kicker">Workout Day</span>
-                      <h4>{dayBlock.day}</h4>
+              {draft.days.map((dayBlock) => {
+                const exerciseOptions = getExerciseOptionsByFocus(dayBlock.focus);
+
+                return (
+                  <div key={dayBlock.id} className="day-builder-card">
+                    <div className="day-builder-header">
+                      <div>
+                        <span className="section-kicker">Workout Day</span>
+                        <h4>{dayBlock.day}</h4>
+                      </div>
+                    </div>
+
+                    <div className="day-builder-grid">
+                      <label className="form-field">
+                        <span>Day</span>
+                        <select
+                          value={dayBlock.day}
+                          onChange={(event) =>
+                            handleDayChange(dayBlock.id, "day", event.target.value)
+                          }
+                        >
+                          {weekDays.map((dayName) => (
+                            <option key={dayName} value={dayName}>
+                              {dayName}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="form-field">
+                        <span>Focus</span>
+                        <select
+                          value={dayBlock.focus}
+                          onChange={(event) =>
+                            handleDayChange(dayBlock.id, "focus", event.target.value)
+                          }
+                        >
+                          {muscleGroups.map((group) => (
+                            <option key={group} value={group}>
+                              {group}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="exercise-builder-list">
+                      {dayBlock.exercises.map((exercise, index) => (
+                        <div key={exercise.id} className="exercise-builder-row">
+                          <div className="exercise-row-top">
+                            <span className="exercise-counter">
+                              Exercise {index + 1}
+                            </span>
+
+                            <button
+                              type="button"
+                              className="remove-exercise-btn"
+                              onClick={() =>
+                                removeExerciseRow(dayBlock.id, exercise.id)
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="exercise-builder-grid">
+                            <label className="form-field">
+                              <span>Exercise Name</span>
+                              <select
+                                value={exercise.name}
+                                onChange={(event) =>
+                                  handleExerciseChange(
+                                    dayBlock.id,
+                                    exercise.id,
+                                    "name",
+                                    event.target.value
+                                  )
+                                }
+                              >
+                                <option value="">Select Exercise</option>
+                                {exerciseOptions.map((exerciseName) => (
+                                  <option key={exerciseName} value={exerciseName}>
+                                    {exerciseName}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="form-field">
+                              <span>Sets</span>
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="3"
+                                value={exercise.sets}
+                                onChange={(event) =>
+                                  handleExerciseChange(
+                                    dayBlock.id,
+                                    exercise.id,
+                                    "sets",
+                                    event.target.value
+                                  )
+                                }
+                              />
+                            </label>
+
+                            <label className="form-field">
+                              <span>Reps</span>
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="12"
+                                value={exercise.reps}
+                                onChange={(event) =>
+                                  handleExerciseChange(
+                                    dayBlock.id,
+                                    exercise.id,
+                                    "reps",
+                                    event.target.value
+                                  )
+                                }
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        className="plans-secondary-btn add-exercise-btn"
+                        onClick={() => addExerciseRow(dayBlock.id)}
+                      >
+                        + Add Exercise
+                      </button>
                     </div>
                   </div>
-
-                  <div className="day-builder-grid">
-                    <label className="form-field">
-                      <span>Day</span>
-                      <select
-                        value={dayBlock.day}
-                        onChange={(event) =>
-                          handleDayChange(dayBlock.id, "day", event.target.value)
-                        }
-                      >
-                        {weekDays.map((dayName) => (
-                          <option key={dayName} value={dayName}>
-                            {dayName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="form-field">
-                      <span>Focus</span>
-                      <input
-                        type="text"
-                        placeholder="Example: Chest"
-                        value={dayBlock.focus}
-                        onChange={(event) =>
-                          handleDayChange(dayBlock.id, "focus", event.target.value)
-                        }
-                      />
-                    </label>
-                  </div>
-
-                  <div className="exercise-builder-list">
-                    {dayBlock.exercises.map((exercise, index) => (
-                      <div key={exercise.id} className="exercise-builder-row">
-                        <div className="exercise-row-top">
-                          <span className="exercise-counter">
-                            Exercise {index + 1}
-                          </span>
-
-                          <button
-                            type="button"
-                            className="remove-exercise-btn"
-                            onClick={() =>
-                              removeExerciseRow(dayBlock.id, exercise.id)
-                            }
-                          >
-                            Remove
-                          </button>
-                        </div>
-
-                        <div className="exercise-builder-grid">
-                          <label className="form-field">
-                            <span>Exercise Name</span>
-                            <input
-                              type="text"
-                              placeholder="Example: Push-ups"
-                              value={exercise.name}
-                              onChange={(event) =>
-                                handleExerciseChange(
-                                  dayBlock.id,
-                                  exercise.id,
-                                  "name",
-                                  event.target.value
-                                )
-                              }
-                            />
-                          </label>
-
-                          <label className="form-field">
-                            <span>Sets</span>
-                            <input
-                              type="number"
-                              min="1"
-                              placeholder="3"
-                              value={exercise.sets}
-                              onChange={(event) =>
-                                handleExerciseChange(
-                                  dayBlock.id,
-                                  exercise.id,
-                                  "sets",
-                                  event.target.value
-                                )
-                              }
-                            />
-                          </label>
-
-                          <label className="form-field">
-                            <span>Reps</span>
-                            <input
-                              type="number"
-                              min="1"
-                              placeholder="12"
-                              value={exercise.reps}
-                              onChange={(event) =>
-                                handleExerciseChange(
-                                  dayBlock.id,
-                                  exercise.id,
-                                  "reps",
-                                  event.target.value
-                                )
-                              }
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    ))}
-
-                    <button
-                      type="button"
-                      className="plans-secondary-btn add-exercise-btn"
-                      onClick={() => addExerciseRow(dayBlock.id)}
-                    >
-                      + Add Exercise
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="plan-modal-actions">
