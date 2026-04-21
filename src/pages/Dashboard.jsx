@@ -169,6 +169,7 @@ const Dashboard = () => {
 
   const handleStartWorkout = () => {
     if (isRestDay || !todayWorkout) return;
+
     navigate("/workouts", {
       state: {
         fromPlan: true,
@@ -178,10 +179,10 @@ const Dashboard = () => {
           day: todayWorkout.day,
           focus: todayWorkout.focus,
           exercises: todayWorkout.exercises || [],
+        },
       },
-    },
-  });
-};
+    });
+  };
 
   const handleViewPlan = () => {
     navigate("/plans");
@@ -189,14 +190,14 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <section className="page-section dashboard-page">
-        <div className="dashboard-bg-orb dashboard-orb-1" />
-        <div className="dashboard-bg-orb dashboard-orb-2" />
-        <div className="dashboard-bg-grid" />
+      <section className="page-section dashboard-page luxury-dashboard-page">
+        <div className="dashboard-radial radial-left" />
+        <div className="dashboard-radial radial-right" />
+        <div className="dashboard-grid-overlay" />
 
-        <div className="dashboard-shell">
-          <div className="dashboard-hero-card fade-up delay-1">
-            <span className="dashboard-tag">Today Screen</span>
+        <div className="dashboard-lux-shell">
+          <div className="dashboard-loading-card fade-up delay-1">
+            <span className="dashboard-kicker">Today Screen</span>
             <h2>Loading dashboard...</h2>
             <p>Fetching your active plan and today&apos;s workout.</p>
           </div>
@@ -207,13 +208,14 @@ const Dashboard = () => {
 
   if (errorMessage) {
     return (
-      <section className="page-section dashboard-page">
-        <div className="dashboard-bg-orb dashboard-orb-1" />
-        <div className="dashboard-bg-orb dashboard-orb-2" />
-        <div className="dashboard-bg-grid" />
+      <section className="page-section dashboard-page luxury-dashboard-page">
+        <div className="dashboard-radial radial-left" />
+        <div className="dashboard-radial radial-right" />
+        <div className="dashboard-grid-overlay" />
 
-        <div className="dashboard-shell">
-          <div className="dashboard-error-card">
+        <div className="dashboard-lux-shell">
+          <div className="dashboard-error-card fade-up delay-1">
+            <span className="dashboard-kicker">Dashboard</span>
             <h3>Unable to load dashboard</h3>
             <p>{errorMessage}</p>
           </div>
@@ -224,30 +226,47 @@ const Dashboard = () => {
 
   if (!activePlan) {
     return (
-      <section className="page-section dashboard-page">
-        <div className="dashboard-bg-orb dashboard-orb-1" />
-        <div className="dashboard-bg-orb dashboard-orb-2" />
-        <div className="dashboard-bg-grid" />
+      <section className="page-section dashboard-page luxury-dashboard-page">
+        <div className="dashboard-radial radial-left" />
+        <div className="dashboard-radial radial-right" />
+        <div className="dashboard-grid-overlay" />
 
-        <div className="dashboard-shell">
-          <div className="dashboard-top-row fade-up delay-1">
-            <div className="dashboard-greeting-block">
-              <span className="dashboard-tag">Today</span>
-              <h2>{greeting}</h2>
-              <p>{todayDate}</p>
+        <div className="dashboard-lux-shell">
+          <div className="dashboard-top-hero fade-up delay-1">
+            <div className="hero-copy-block slide-in-soft">
+              <span className="dashboard-kicker">Today</span>
+              <h1>{greeting}</h1>
+              <p className="dashboard-date">{todayDate}</p>
+              <p className="dashboard-subcopy">
+                Build a plan first to unlock your premium daily workout flow.
+              </p>
             </div>
 
-            <div className="dashboard-streak-badge">
-              <span>🔥</span>
-              <strong>0 Day Streak</strong>
+            <div className="hero-side-block">
+              <div className="lux-streak-pill">
+                <span className="streak-icon">🔥</span>
+                <div>
+                  <strong>0 Day Streak</strong>
+                  <p>Start your first run</p>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="dashboard-empty-state fade-up delay-2">
-            <h3>No active plan yet</h3>
+            <span className="dashboard-kicker">No Active Plan</span>
+            <h3>Create and activate a plan</h3>
             <p>
-              Go to Plans tab, create a workout plan, and set one plan as active.
+              Head to the Plans tab, build your workout schedule, and set one plan
+              as active to power this Today screen.
             </p>
+            <button
+              type="button"
+              className="dashboard-cta-button"
+              onClick={handleViewPlan}
+            >
+              Go to Plans
+            </button>
           </div>
         </div>
       </section>
@@ -255,169 +274,201 @@ const Dashboard = () => {
   }
 
   return (
-    <section className="page-section dashboard-page">
-      <div className="dashboard-bg-orb dashboard-orb-1" />
-      <div className="dashboard-bg-orb dashboard-orb-2" />
-      <div className="dashboard-bg-grid" />
+    <section className="page-section dashboard-page luxury-dashboard-page">
+      <div className="dashboard-radial radial-left" />
+      <div className="dashboard-radial radial-right" />
+      <div className="dashboard-grid-overlay" />
 
-      <div className="dashboard-shell">
-        <div className="dashboard-top-row fade-up delay-1">
-          <div className="dashboard-greeting-block slide-in-soft">
-            <span className="dashboard-tag">Today</span>
-            <h2>{greeting}</h2>
-            <p>{todayDate}</p>
+      <div className="dashboard-lux-shell">
+        <div className="dashboard-top-hero fade-up delay-1">
+          <div className="hero-copy-block slide-in-soft">
+            <span className="dashboard-kicker">Today</span>
+            <h1>{greeting}</h1>
+            <p className="dashboard-date">{todayDate}</p>
+            <p className="dashboard-subcopy">
+              {isRestDay
+                ? "Recovery today. Reset your body and stay ready for the next strong session."
+                : "Your active plan is ready. One clean session today can move the whole week forward."}
+            </p>
           </div>
 
-          <div className="dashboard-streak-badge pulse-soft">
-            <span>🔥</span>
-            <strong>{streakPlaceholder} Day Streak</strong>
+          <div className="hero-side-block">
+            <div className="lux-streak-pill pulse-soft">
+              <span className="streak-icon">🔥</span>
+              <div>
+                <strong>{streakPlaceholder} Day Streak</strong>
+                <p>Consistency in motion</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="dashboard-hero-card dashboard-scale-in fade-up delay-2">
-          <div className="hero-card-top">
-            <div>
-              <span className="section-kicker">Today&apos;s Workout</span>
-              <h3>{isRestDay ? "Recovery Day" : todayWorkout?.focus || "Workout Day"}</h3>
-              <p>{activePlan.planName}</p>
+        <div className="dashboard-main-hero dashboard-scale-in fade-up delay-2">
+          <div className="main-hero-left">
+            <div className="hero-badge-row">
+              <span className="dashboard-kicker">Today&apos;s Workout</span>
+              <span className="lux-mini-pill">{activePlan.planName}</span>
             </div>
 
-            <button
-              type="button"
-              className="dashboard-primary-btn pulse-soft"
-              onClick={isRestDay ? handleViewPlan : handleStartWorkout}
-            >
-              {isRestDay ? "View Plan" : "Start Workout"}
-            </button>
-          </div>
+            <h2>{isRestDay ? "Recovery Day" : todayWorkout?.focus || "Workout Day"}</h2>
+            <p className="main-hero-subtitle">
+              {isRestDay
+                ? `No workout is scheduled for ${todayName}. Use today to recover and come back stronger.`
+                : `${exerciseCount} exercises • ${totalSetsToday} total sets • ${estimatedWorkoutTime}`}
+            </p>
 
-          {isRestDay ? (
-            <div className="rest-day-card">
-              <div className="rest-day-icon">🌙</div>
-              <div>
-                <h4>No workout scheduled for {todayName}</h4>
-                <p>
-                  Take your rest seriously. Recovery helps you perform better on
-                  your next training day.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="hero-workout-meta">
-                <div className="meta-card">
+            {!isRestDay && (
+              <div className="hero-meta-row">
+                <div className="hero-meta-chip">
                   <span>Focus</span>
                   <strong>{todayWorkout?.focus}</strong>
                 </div>
-
-                <div className="meta-card">
+                <div className="hero-meta-chip">
                   <span>Exercises</span>
                   <strong>{exerciseCount}</strong>
                 </div>
-
-                <div className="meta-card">
+                <div className="hero-meta-chip">
                   <span>Time</span>
                   <strong>{estimatedWorkoutTime}</strong>
                 </div>
-
-                <div className="meta-card">
+                <div className="hero-meta-chip">
                   <span>Style</span>
                   <strong>{equipmentLabel}</strong>
                 </div>
               </div>
+            )}
 
-              <div className="today-exercises-panel">
-                <div className="panel-title-row">
-                  <h4>Today&apos;s Exercise List</h4>
-                  <span>{totalSetsToday} total sets</span>
-                </div>
+            {isRestDay ? (
+              <button
+                type="button"
+                className="dashboard-cta-button"
+                onClick={handleViewPlan}
+              >
+                View Plan
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="dashboard-cta-button glow-cta"
+                onClick={handleStartWorkout}
+              >
+                Start Workout
+              </button>
+            )}
+          </div>
 
-                <div className="exercise-preview-list">
-                  {todayWorkout?.exercises?.map((exercise, index) => (
-                    <div key={`${exercise.name}-${index}`} className="exercise-preview-row">
-                      <div>
-                        <strong>{exercise.name}</strong>
-                        <p>{todayWorkout.focus}</p>
-                      </div>
-                      <span>
-                        {exercise.sets} × {exercise.reps}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+          <div className="main-hero-right">
+            <div className="hero-visual-orb">
+              <div className="hero-visual-ring" />
+              <div className="hero-visual-content">
+                <span className="hero-visual-label">Active Plan</span>
+                <strong>{activePlan.planName}</strong>
+                <p>{activePlan.goal}</p>
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
 
-        <div className="dashboard-stats-row">
-          <div className="dashboard-stat-card fade-up delay-3">
-            <div className="card-heading">
-              <span className="section-kicker">Plan Progress</span>
-              <h4>{activePlan.planName}</h4>
+        {!isRestDay && (
+          <div className="dashboard-exercise-showcase fade-up delay-3">
+            <div className="section-headline-row">
+              <div>
+                <span className="dashboard-kicker">Exercise List</span>
+                <h3>Today&apos;s Session</h3>
+              </div>
+              <div className="lux-side-metric">
+                <strong>{totalSetsToday}</strong>
+                <span>Total Sets</span>
+              </div>
             </div>
 
-            <div className="progress-block">
-              <div className="progress-row">
-                <span>Active Plan Completion</span>
-                <strong>{activePlanCompletion}%</strong>
+            <div className="exercise-showcase-list">
+              {todayWorkout?.exercises?.map((exercise, index) => (
+                <div key={`${exercise.name}-${index}`} className="lux-exercise-row">
+                  <div className="exercise-row-left">
+                    <span className="exercise-index">0{index + 1}</span>
+                    <div>
+                      <strong>{exercise.name}</strong>
+                      <p>{todayWorkout.focus}</p>
+                    </div>
+                  </div>
+
+                  <div className="exercise-row-right">
+                    <span>{exercise.sets} × {exercise.reps}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="dashboard-secondary-grid">
+          <div className="dashboard-lux-card fade-up delay-4">
+            <div className="section-headline-row">
+              <div>
+                <span className="dashboard-kicker">Plan Progress</span>
+                <h3>{activePlan.planName}</h3>
               </div>
-              <div className="progress-bar">
+              <div className="compact-metric">{activePlanCompletion}%</div>
+            </div>
+
+            <div className="lux-progress-block">
+              <div className="lux-progress-track">
                 <div
-                  className="progress-fill"
+                  className="lux-progress-fill"
                   style={{ width: `${activePlanCompletion}%` }}
                 />
               </div>
             </div>
 
-            <p className="card-footer-text">
+            <p className="support-copy">
               Goal: {activePlan.goal} • Duration: {activePlan.duration}
             </p>
           </div>
 
-          <div className="dashboard-stat-card fade-up delay-4">
-            <div className="card-heading">
-              <span className="section-kicker">This Week</span>
-              <h4>Weekly Consistency</h4>
-            </div>
-
-            <div className="weekly-metric">
-              <strong>
+          <div className="dashboard-lux-card fade-up delay-5">
+            <div className="section-headline-row">
+              <div>
+                <span className="dashboard-kicker">This Week</span>
+                <h3>Weekly Consistency</h3>
+              </div>
+              <div className="compact-metric">
                 {weeklyCompletionCount}/{activePlan.daysPerWeek}
-              </strong>
-              <span>workout days tracked</span>
+              </div>
             </div>
 
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.round(
-                      (weeklyCompletionCount / Math.max(activePlan.daysPerWeek, 1)) * 100
-                    )
-                  )}%`,
-                }}
-              />
+            <div className="lux-progress-block">
+              <div className="lux-progress-track">
+                <div
+                  className="lux-progress-fill"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.round(
+                        (weeklyCompletionCount / Math.max(activePlan.daysPerWeek, 1)) * 100
+                      )
+                    )}%`,
+                  }}
+                />
+              </div>
             </div>
 
-            <p className="card-footer-text">
-              Keep showing up. Small wins build long-term consistency.
+            <p className="support-copy">
+              Keep showing up. Small sessions build long-term fitness identity.
             </p>
           </div>
         </div>
 
-        <div className="dashboard-smart-row">
-          <div className="dashboard-info-card fade-up delay-5 shimmer-soft">
-            <span className="section-kicker">Smart Insight</span>
-            <h4>Today&apos;s Insight</h4>
+        <div className="dashboard-smart-grid">
+          <div className="dashboard-lux-card insight-card fade-up delay-5">
+            <span className="dashboard-kicker">Smart Insight</span>
+            <h3>Today&apos;s Insight</h3>
             <p>{insightText}</p>
           </div>
 
-          <div className="dashboard-info-card fade-up delay-6">
-            <span className="section-kicker">Achievement</span>
-            <h4>{achievementText}</h4>
+          <div className="dashboard-lux-card achievement-card fade-up delay-6">
+            <span className="dashboard-kicker">Achievement</span>
+            <h3>{achievementText}</h3>
             <p>
               {activePlanCompletion >= 75
                 ? "You are building strong weekly momentum."
@@ -426,32 +477,37 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="dashboard-bottom-row fade-up delay-6">
-          <div className="dashboard-next-card">
-            <span className="section-kicker">Next Workout</span>
+        <div className="dashboard-next-section fade-up delay-6">
+          <div className="dashboard-lux-card next-workout-card">
+            <div className="section-headline-row">
+              <div>
+                <span className="dashboard-kicker">Next Workout</span>
+                <h3>
+                  {nextWorkout
+                    ? `${nextWorkout.day} • ${nextWorkout.focus}`
+                    : "No upcoming workout"}
+                </h3>
+              </div>
+            </div>
+
             {nextWorkout ? (
               <>
-                <h4>
-                  {nextWorkout.day} • {nextWorkout.focus}
-                </h4>
-                <p>
-                  {nextWorkout.exercises?.length || 0} exercises planned for the
-                  next session.
+                <p className="support-copy">
+                  {nextWorkout.exercises?.length || 0} exercises planned for your next session.
                 </p>
 
-                <div className="next-exercise-preview">
-                  {(nextWorkout.exercises || []).slice(0, 3).map((exercise, index) => (
-                    <span key={`${exercise.name}-${index}`} className="next-chip">
+                <div className="next-chip-row">
+                  {(nextWorkout.exercises || []).slice(0, 4).map((exercise, index) => (
+                    <span key={`${exercise.name}-${index}`} className="lux-next-chip">
                       {exercise.name}
                     </span>
                   ))}
                 </div>
               </>
             ) : (
-              <>
-                <h4>No upcoming workout</h4>
-                <p>Your active plan does not have another scheduled day yet.</p>
-              </>
+              <p className="support-copy">
+                Your active plan does not have another scheduled day yet.
+              </p>
             )}
           </div>
         </div>
