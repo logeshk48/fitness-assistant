@@ -1,4 +1,5 @@
 import "./Dashboard.css";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import {
@@ -20,6 +21,8 @@ const todayNames = [
 ];
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+
   const [activePlan, setActivePlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -164,6 +167,26 @@ const Dashboard = () => {
     return "Getting Started";
   }, [activePlan, activePlanCompletion]);
 
+  const handleStartWorkout = () => {
+    if (isRestDay || !todayWorkout) return;
+    navigate("/workouts", {
+      state: {
+        fromPlan: true,
+        activePlanId: activePlan?.id || null,
+        activePlanName: activePlan?.planName || "",
+        workout: {
+          day: todayWorkout.day,
+          focus: todayWorkout.focus,
+          exercises: todayWorkout.exercises || [],
+      },
+    },
+  });
+};
+
+  const handleViewPlan = () => {
+    navigate("/plans");
+  };
+
   if (loading) {
     return (
       <section className="page-section dashboard-page">
@@ -259,7 +282,11 @@ const Dashboard = () => {
               <p>{activePlan.planName}</p>
             </div>
 
-            <button type="button" className="dashboard-primary-btn pulse-soft">
+            <button
+              type="button"
+              className="dashboard-primary-btn pulse-soft"
+              onClick={isRestDay ? handleViewPlan : handleStartWorkout}
+            >
               {isRestDay ? "View Plan" : "Start Workout"}
             </button>
           </div>
