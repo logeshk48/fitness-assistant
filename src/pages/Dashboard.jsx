@@ -20,6 +20,8 @@ const todayNames = [
   "Saturday",
 ];
 
+const DAY_ABBR = ["S", "M", "T", "W", "T", "F", "S"];
+
 const Dashboard = () => {
   const navigate = useNavigate();
 
@@ -29,6 +31,8 @@ const Dashboard = () => {
 
   const today = useMemo(() => new Date(), []);
   const todayName = todayNames[today.getDay()];
+  const todayDayIndex = today.getDay();
+
   const todayDate = today.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -38,26 +42,23 @@ const Dashboard = () => {
 
   const greeting = useMemo(() => {
     const hour = today.getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) return "Good\nmorning.";
+    if (hour < 17) return "Good\nafternoon.";
+    return "Good\nevening.";
   }, [today]);
 
   useEffect(() => {
     const fetchActivePlan = async () => {
       setLoading(true);
       setErrorMessage("");
-
       try {
         const plansRef = collection(db, "plans");
         const plansQuery = query(plansRef, orderBy("createdAt", "desc"), limit(20));
         const snapshot = await getDocs(plansQuery);
-
         const plans = snapshot.docs.map((item) => ({
           id: item.id,
           ...item.data(),
         }));
-
         const selectedActivePlan = plans.find((plan) => plan.isActive) || null;
         setActivePlan(selectedActivePlan);
       } catch (error) {
@@ -67,7 +68,6 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-
     fetchActivePlan();
   }, []);
 
@@ -83,31 +83,22 @@ const Dashboard = () => {
     return activePlan.days.find((day) => day.day === todayName) || null;
   }, [activePlan, todayName]);
 
-  const isRestDay = useMemo(() => {
-    return activePlan && !todayWorkout;
-  }, [activePlan, todayWorkout]);
+  const isRestDay = useMemo(() => activePlan && !todayWorkout, [activePlan, todayWorkout]);
 
-  const exerciseCount = useMemo(() => {
-    return todayWorkout?.exercises?.length || 0;
-  }, [todayWorkout]);
+  const exerciseCount = useMemo(() => todayWorkout?.exercises?.length || 0, [todayWorkout]);
 
   const totalSetsToday = useMemo(() => {
     if (!todayWorkout?.exercises) return 0;
     return todayWorkout.exercises.reduce(
-      (sum, exercise) => sum + Number(exercise.sets || 0),
+      (sum, ex) => sum + Number(ex.sets || 0),
       0
     );
   }, [todayWorkout]);
 
   const estimatedWorkoutTime = useMemo(() => {
-    if (!todayWorkout?.exercises?.length) return "Recovery Day";
+    if (!todayWorkout?.exercises?.length) return "Recovery";
     const minutes = Math.max(todayWorkout.exercises.length * 12, 25);
     return `${minutes} min`;
-  }, [todayWorkout]);
-
-  const equipmentLabel = useMemo(() => {
-    if (!todayWorkout?.exercises?.length) return "Rest";
-    return "Mixed";
   }, [todayWorkout]);
 
   const weeklyCompletionCount = useMemo(() => {
@@ -128,36 +119,29 @@ const Dashboard = () => {
     return Math.max(3, activePlan.daysPerWeek || 3);
   }, [activePlan]);
 
+  const consistencyPercent = useMemo(() => {
+    if (!activePlan?.daysPerWeek) return 0;
+    return Math.min(100, Math.round((weeklyCompletionCount / Math.max(activePlan.daysPerWeek, 1)) * 100));
+  }, [activePlan, weeklyCompletionCount]);
+
   const nextWorkout = useMemo(() => {
     if (!activePlan?.days?.length) return null;
     if (!todayWorkout) return workoutDays[0] || null;
-
     const todayIndex = todayNames.indexOf(todayName);
-
     for (let offset = 1; offset <= 7; offset += 1) {
       const nextIndex = (todayIndex + offset) % 7;
       const nextDayName = todayNames[nextIndex];
       const found = activePlan.days.find((day) => day.day === nextDayName);
       if (found) return found;
     }
-
     return null;
   }, [activePlan, todayWorkout, todayName, workoutDays]);
 
   const insightText = useMemo(() => {
-    if (!activePlan) {
-      return "Create a plan to get a personalized daily workout flow.";
-    }
-
-    if (isRestDay) {
-      return "Today is a recovery day. Rest well so your next workout feels stronger.";
-    }
-
-    if (exerciseCount >= 4) {
-      return "You have a strong session today. Start with your biggest movement first.";
-    }
-
-    return "A focused session today can build momentum for the rest of your week.";
+    if (!activePlan) return "Create a plan to get a personalized daily workout flow.";
+    if (isRestDay) return "Today is a recovery day. Rest well so your next workout feels stronger.";
+    if (exerciseCount >= 4) return "Lead with your heaviest compound movement first. Your CNS is freshest at the start of your session.";
+    return "A focused session today builds the momentum that carries your whole week.";
   }, [activePlan, isRestDay, exerciseCount]);
 
   const achievementText = useMemo(() => {
@@ -169,7 +153,6 @@ const Dashboard = () => {
 
   const handleStartWorkout = () => {
     if (isRestDay || !todayWorkout) return;
-
     navigate("/workouts", {
       state: {
         fromPlan: true,
@@ -184,21 +167,16 @@ const Dashboard = () => {
     });
   };
 
-  const handleViewPlan = () => {
-    navigate("/plans");
-  };
+  const handleViewPlan = () => navigate("/plans");
 
+  /* ── LOADING ── */
   if (loading) {
     return (
-      <section className="page-section dashboard-page luxury-dashboard-page">
-        <div className="dashboard-radial radial-left" />
-        <div className="dashboard-radial radial-right" />
-        <div className="dashboard-grid-overlay" />
-
-        <div className="dashboard-lux-shell">
-          <div className="dashboard-loading-card fade-up delay-1">
-            <span className="dashboard-kicker">Today Screen</span>
-            <h2>Loading dashboard...</h2>
+      <section className="db-page">
+        <div className="db-shell">
+          <div className="db-state-card fade-up">
+            <span className="db-kicker">Today Screen</span>
+            <h2>Loading dashboard…</h2>
             <p>Fetching your active plan and today&apos;s workout.</p>
           </div>
         </div>
@@ -206,16 +184,13 @@ const Dashboard = () => {
     );
   }
 
+  /* ── ERROR ── */
   if (errorMessage) {
     return (
-      <section className="page-section dashboard-page luxury-dashboard-page">
-        <div className="dashboard-radial radial-left" />
-        <div className="dashboard-radial radial-right" />
-        <div className="dashboard-grid-overlay" />
-
-        <div className="dashboard-lux-shell">
-          <div className="dashboard-error-card fade-up delay-1">
-            <span className="dashboard-kicker">Dashboard</span>
+      <section className="db-page">
+        <div className="db-shell">
+          <div className="db-state-card fade-up">
+            <span className="db-kicker">Dashboard</span>
             <h3>Unable to load dashboard</h3>
             <p>{errorMessage}</p>
           </div>
@@ -224,47 +199,30 @@ const Dashboard = () => {
     );
   }
 
+  /* ── NO ACTIVE PLAN ── */
   if (!activePlan) {
     return (
-      <section className="page-section dashboard-page luxury-dashboard-page">
-        <div className="dashboard-radial radial-left" />
-        <div className="dashboard-radial radial-right" />
-        <div className="dashboard-grid-overlay" />
-
-        <div className="dashboard-lux-shell">
-          <div className="dashboard-top-hero fade-up delay-1">
-            <div className="hero-copy-block slide-in-soft">
-              <span className="dashboard-kicker">Today</span>
-              <h1>{greeting}</h1>
-              <p className="dashboard-date">{todayDate}</p>
-              <p className="dashboard-subcopy">
-                Build a plan first to unlock your premium daily workout flow.
-              </p>
-            </div>
-
-            <div className="hero-side-block">
-              <div className="lux-streak-pill">
-                <span className="streak-icon">🔥</span>
-                <div>
-                  <strong>0 Day Streak</strong>
-                  <p>Start your first run</p>
-                </div>
+      <section className="db-page">
+        <div className="db-shell">
+          <header className="db-hero fade-up delay-1">
+            <div className="db-greeting">{greeting.split("\n").map((line, i) => (
+              <span key={i}>{line}</span>
+            ))}</div>
+            <div className="db-hero-right">
+              <div className="db-streak-pill">
+                <span className="db-streak-dot" />
+                0 day streak
               </div>
             </div>
-          </div>
+          </header>
 
-          <div className="dashboard-empty-state fade-up delay-2">
-            <span className="dashboard-kicker">No Active Plan</span>
+          <div className="db-state-card fade-up delay-2">
+            <span className="db-kicker">No Active Plan</span>
             <h3>Create and activate a plan</h3>
             <p>
-              Head to the Plans tab, build your workout schedule, and set one plan
-              as active to power this Today screen.
+              Head to the Plans tab, build your workout schedule, and set one plan as active to power this Today screen.
             </p>
-            <button
-              type="button"
-              className="dashboard-cta-button"
-              onClick={handleViewPlan}
-            >
+            <button type="button" className="db-btn-primary" onClick={handleViewPlan}>
               Go to Plans
             </button>
           </div>
@@ -273,95 +231,82 @@ const Dashboard = () => {
     );
   }
 
+  /* ── MAIN DASHBOARD ── */
   return (
-    <section className="page-section dashboard-page luxury-dashboard-page">
-      <div className="dashboard-radial radial-left" />
-      <div className="dashboard-radial radial-right" />
-      <div className="dashboard-grid-overlay" />
+    <section className="db-page">
+      <div className="db-shell">
 
-      <div className="dashboard-lux-shell">
-        <div className="dashboard-top-hero fade-up delay-1">
-          <div className="hero-copy-block slide-in-soft">
-            <span className="dashboard-kicker">Today</span>
-            <h1>{greeting}</h1>
-            <p className="dashboard-date">{todayDate}</p>
-            <p className="dashboard-subcopy">
-              {isRestDay
-                ? "Recovery today. Reset your body and stay ready for the next strong session."
-                : "Your active plan is ready. One clean session today can move the whole week forward."}
-            </p>
+        {/* ── HERO ROW ── */}
+        <header className="db-hero fade-up delay-1">
+          <div className="db-greeting-block">
+            <div className="db-greeting">
+              {greeting.split("\n").map((line, i) => <span key={i}>{line}</span>)}
+            </div>
+            <p className="db-date">{todayDate}</p>
           </div>
-
-          <div className="hero-side-block">
-            <div className="lux-streak-pill pulse-soft">
-              <span className="streak-icon">🔥</span>
-              <div>
-                <strong>{streakPlaceholder} Day Streak</strong>
-                <p>Consistency in motion</p>
-              </div>
+          <div className="db-hero-right">
+            <div className="db-streak-pill">
+              <span className="db-streak-dot" />
+              {streakPlaceholder} day streak
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="dashboard-main-hero dashboard-scale-in fade-up delay-2">
-          <div className="main-hero-left">
-            <div className="hero-badge-row">
-              <span className="dashboard-kicker">Today&apos;s Workout</span>
-              <span className="lux-mini-pill">{activePlan.planName}</span>
+        {/* ── TODAY CARD ── */}
+        <div className="db-today-card fade-up delay-2">
+          <div className="db-today-inner">
+            <div>
+              <span className="db-kicker light">Today&apos;s Workout · {activePlan.planName}</span>
+              <h2 className="db-today-focus">
+                {isRestDay ? "Recovery Day" : todayWorkout?.focus || "Workout Day"}
+              </h2>
+              <p className="db-today-meta">
+                {isRestDay
+                  ? `No workout scheduled for ${todayName}. Rest and recover.`
+                  : `${exerciseCount} exercises · ${totalSetsToday} total sets · ${estimatedWorkoutTime}`}
+              </p>
+
+              {!isRestDay && (
+                <div className="db-meta-chips">
+                  <div className="db-chip">
+                    <span className="db-chip-label">Focus</span>
+                    <span className="db-chip-value">{todayWorkout?.focus}</span>
+                  </div>
+                  <div className="db-chip">
+                    <span className="db-chip-label">Exercises</span>
+                    <span className="db-chip-value">{exerciseCount}</span>
+                  </div>
+                  <div className="db-chip">
+                    <span className="db-chip-label">Time</span>
+                    <span className="db-chip-value">{estimatedWorkoutTime}</span>
+                  </div>
+                  <div className="db-chip">
+                    <span className="db-chip-label">Sets</span>
+                    <span className="db-chip-value">{totalSetsToday}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="db-cta-row">
+                {isRestDay ? (
+                  <button type="button" className="db-btn-primary light" onClick={handleViewPlan}>
+                    View Plan
+                  </button>
+                ) : (
+                  <button type="button" className="db-btn-primary light" onClick={handleStartWorkout}>
+                    Start Workout →
+                  </button>
+                )}
+                <button type="button" className="db-btn-ghost" onClick={handleViewPlan}>
+                  View Plan
+                </button>
+              </div>
             </div>
 
-            <h2>{isRestDay ? "Recovery Day" : todayWorkout?.focus || "Workout Day"}</h2>
-            <p className="main-hero-subtitle">
-              {isRestDay
-                ? `No workout is scheduled for ${todayName}. Use today to recover and come back stronger.`
-                : `${exerciseCount} exercises • ${totalSetsToday} total sets • ${estimatedWorkoutTime}`}
-            </p>
-
-            {!isRestDay && (
-              <div className="hero-meta-row">
-                <div className="hero-meta-chip">
-                  <span>Focus</span>
-                  <strong>{todayWorkout?.focus}</strong>
-                </div>
-                <div className="hero-meta-chip">
-                  <span>Exercises</span>
-                  <strong>{exerciseCount}</strong>
-                </div>
-                <div className="hero-meta-chip">
-                  <span>Time</span>
-                  <strong>{estimatedWorkoutTime}</strong>
-                </div>
-                <div className="hero-meta-chip">
-                  <span>Style</span>
-                  <strong>{equipmentLabel}</strong>
-                </div>
-              </div>
-            )}
-
-            {isRestDay ? (
-              <button
-                type="button"
-                className="dashboard-cta-button"
-                onClick={handleViewPlan}
-              >
-                View Plan
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="dashboard-cta-button glow-cta"
-                onClick={handleStartWorkout}
-              >
-                Start Workout
-              </button>
-            )}
-          </div>
-
-          <div className="main-hero-right">
-            <div className="hero-visual-orb">
-              <div className="hero-visual-ring" />
-              <div className="hero-visual-content">
-                <span className="hero-visual-label">Active Plan</span>
+            <div className="db-orb" aria-hidden="true">
+              <div className="db-orb-ring" />
+              <div className="db-orb-content">
+                <span className="db-orb-label">Active Plan</span>
                 <strong>{activePlan.planName}</strong>
                 <p>{activePlan.goal}</p>
               </div>
@@ -369,148 +314,151 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* ── EXERCISE LIST ── */}
         {!isRestDay && (
-          <div className="dashboard-exercise-showcase fade-up delay-3">
-            <div className="section-headline-row">
+          <div className="db-card fade-up delay-3">
+            <div className="db-card-header">
               <div>
-                <span className="dashboard-kicker">Exercise List</span>
-                <h3>Today&apos;s Session</h3>
+                <span className="db-kicker dark">Exercise List</span>
+                <h3 className="db-card-title">Today&apos;s Session</h3>
               </div>
-              <div className="lux-side-metric">
-                <strong>{totalSetsToday}</strong>
-                <span>Total Sets</span>
-              </div>
+              <div className="db-metric-badge">{totalSetsToday} sets</div>
             </div>
 
-            <div className="exercise-showcase-list">
+            <div className="db-exercise-list">
               {todayWorkout?.exercises?.map((exercise, index) => (
-                <div key={`${exercise.name}-${index}`} className="lux-exercise-row">
-                  <div className="exercise-row-left">
-                    <span className="exercise-index">0{index + 1}</span>
+                <div key={`${exercise.name}-${index}`} className="db-ex-row">
+                  <div className="db-ex-left">
+                    <span className="db-ex-num">0{index + 1}</span>
                     <div>
-                      <strong>{exercise.name}</strong>
-                      <p>{todayWorkout.focus}</p>
+                      <strong className="db-ex-name">{exercise.name}</strong>
+                      <p className="db-ex-focus">{todayWorkout.focus}</p>
                     </div>
                   </div>
-
-                  <div className="exercise-row-right">
-                    <span>{exercise.sets} × {exercise.reps}</span>
-                  </div>
+                  <span className="db-ex-sets">{exercise.sets} × {exercise.reps}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        <div className="dashboard-secondary-grid">
-          <div className="dashboard-lux-card fade-up delay-4">
-            <div className="section-headline-row">
+        {/* ── PLAN PROGRESS + WEEKLY ── */}
+        <div className="db-grid-2 fade-up delay-4">
+          <div className="db-card">
+            <div className="db-card-header">
               <div>
-                <span className="dashboard-kicker">Plan Progress</span>
-                <h3>{activePlan.planName}</h3>
+                <span className="db-kicker dark">Plan Progress</span>
+                <h3 className="db-card-title">{activePlan.planName}</h3>
               </div>
-              <div className="compact-metric">{activePlanCompletion}%</div>
+              <span className="db-big-num">{activePlanCompletion}%</span>
             </div>
-
-            <div className="lux-progress-block">
-              <div className="lux-progress-track">
-                <div
-                  className="lux-progress-fill"
-                  style={{ width: `${activePlanCompletion}%` }}
-                />
-              </div>
+            <div className="db-progress-track">
+              <div className="db-progress-fill" style={{ width: `${activePlanCompletion}%` }} />
             </div>
-
-            <p className="support-copy">
-              Goal: {activePlan.goal} • Duration: {activePlan.duration}
+            <p className="db-support-copy">
+              Goal: {activePlan.goal} · Duration: {activePlan.duration}
             </p>
+
+            {/* Week dots */}
+            <div className="db-week-dots">
+              {DAY_ABBR.map((abbr, i) => {
+                const isToday = i === todayDayIndex;
+                const isPast = i < todayDayIndex;
+                const hasWorkout = activePlan?.days?.find(
+                  (d) => d.day === todayNames[i] && d.exercises?.length > 0
+                );
+                return (
+                  <div
+                    key={i}
+                    className={`db-day-dot ${isToday ? "today" : ""} ${isPast && hasWorkout ? "done" : ""} ${!hasWorkout ? "rest" : ""}`}
+                  >
+                    {abbr}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="dashboard-lux-card fade-up delay-5">
-            <div className="section-headline-row">
+          <div className="db-card">
+            <div className="db-card-header">
               <div>
-                <span className="dashboard-kicker">This Week</span>
-                <h3>Weekly Consistency</h3>
+                <span className="db-kicker dark">This Week</span>
+                <h3 className="db-card-title">Consistency</h3>
               </div>
-              <div className="compact-metric">
-                {weeklyCompletionCount}/{activePlan.daysPerWeek}
-              </div>
+              <span className="db-big-num">
+                {weeklyCompletionCount}<span className="db-big-num-sub">/{activePlan.daysPerWeek}</span>
+              </span>
             </div>
-
-            <div className="lux-progress-block">
-              <div className="lux-progress-track">
-                <div
-                  className="lux-progress-fill"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      Math.round(
-                        (weeklyCompletionCount / Math.max(activePlan.daysPerWeek, 1)) * 100
-                      )
-                    )}%`,
-                  }}
-                />
-              </div>
+            <div className="db-progress-track">
+              <div
+                className="db-progress-fill accent"
+                style={{ width: `${consistencyPercent}%` }}
+              />
             </div>
-
-            <p className="support-copy">
+            <p className="db-support-copy">
               Keep showing up. Small sessions build long-term fitness identity.
             </p>
           </div>
         </div>
 
-        <div className="dashboard-smart-grid">
-          <div className="dashboard-lux-card insight-card fade-up delay-5">
-            <span className="dashboard-kicker">Smart Insight</span>
-            <h3>Today&apos;s Insight</h3>
-            <p>{insightText}</p>
+        {/* ── INSIGHT + ACHIEVEMENT ── */}
+        <div className="db-grid-2 fade-up delay-5">
+          <div className="db-card insight">
+            <span className="db-kicker insight-kicker">Smart Insight</span>
+            <h3 className="db-card-title">Today&apos;s Insight</h3>
+            <p className="db-insight-text">{insightText}</p>
           </div>
 
-          <div className="dashboard-lux-card achievement-card fade-up delay-6">
-            <span className="dashboard-kicker">Achievement</span>
-            <h3>{achievementText}</h3>
-            <p>
+          <div className="db-card">
+            <span className="db-kicker dark">Achievement</span>
+            <h3 className="db-card-title">{achievementText}</h3>
+            <p className="db-support-copy">
               {activePlanCompletion >= 75
                 ? "You are building strong weekly momentum."
                 : "Stay consistent and your next badge will unlock soon."}
             </p>
-          </div>
-        </div>
-
-        <div className="dashboard-next-section fade-up delay-6">
-          <div className="dashboard-lux-card next-workout-card">
-            <div className="section-headline-row">
-              <div>
-                <span className="dashboard-kicker">Next Workout</span>
-                <h3>
-                  {nextWorkout
-                    ? `${nextWorkout.day} • ${nextWorkout.focus}`
-                    : "No upcoming workout"}
-                </h3>
-              </div>
+            <div className="db-achievement-bar">
+              <div className="db-achievement-fill" style={{ width: `${Math.min(100, activePlanCompletion * 1.3)}%` }} />
             </div>
-
-            {nextWorkout ? (
-              <>
-                <p className="support-copy">
-                  {nextWorkout.exercises?.length || 0} exercises planned for your next session.
-                </p>
-
-                <div className="next-chip-row">
-                  {(nextWorkout.exercises || []).slice(0, 4).map((exercise, index) => (
-                    <span key={`${exercise.name}-${index}`} className="lux-next-chip">
-                      {exercise.name}
-                    </span>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="support-copy">
-                Your active plan does not have another scheduled day yet.
-              </p>
-            )}
           </div>
         </div>
+
+        {/* ── NEXT WORKOUT ── */}
+        <div className="db-card db-next-card fade-up delay-6">
+          <div className="db-card-header">
+            <div>
+              <span className="db-kicker dark">Next Workout</span>
+              <h3 className="db-card-title">
+                {nextWorkout
+                  ? `${nextWorkout.day} · ${nextWorkout.focus}`
+                  : "No upcoming workout"}
+              </h3>
+            </div>
+          </div>
+
+          {nextWorkout ? (
+            <>
+              <p className="db-support-copy">
+                {nextWorkout.exercises?.length || 0} exercises planned for your next session.
+              </p>
+              <div className="db-chip-row">
+                {(nextWorkout.exercises || []).slice(0, 4).map((exercise, index) => (
+                  <span key={`${exercise.name}-${index}`} className="db-mini-chip">
+                    {exercise.name}
+                  </span>
+                ))}
+                {nextWorkout.exercises?.length > 4 && (
+                  <span className="db-mini-chip">+{nextWorkout.exercises.length - 4} more</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="db-support-copy">
+              Your active plan does not have another scheduled day yet.
+            </p>
+          )}
+        </div>
+
       </div>
     </section>
   );
